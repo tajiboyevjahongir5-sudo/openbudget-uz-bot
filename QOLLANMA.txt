@@ -1,0 +1,151 @@
+================================================================================
+          OPEN BUDGET MIJOZ BOTINI O'RNATISH BO'YICHA TO'LIQ QO'LLANMA
+================================================================================
+
+Ushbu bot o'zining ichki asinxron ma'lumotlar bazasiga (aiosqlite + WAL) ega.
+Sizdan alohida PostgreSQL yoki MySQL server o'rnatish talab qilinmaydi!
+Bot ilk marta ishga tushganda "client_bot.db" faylini o'zi avtomatik yaratadi.
+
+--------------------------------------------------------------------------------
+1. KERAKLI O'ZGARUVCHILAR (.env yoki Server Variables)
+--------------------------------------------------------------------------------
+BOT_TOKEN=7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # @BotFather dan olingan token
+ADMIN_ID=123456789                                    # Sizning Telegram ID raqamingiz
+API_URL=https://openbudjet-production.up.railway.app/api/v1  # Asosiy API server
+VOTE_COOLDOWN_HOURS=0                                 # 0 = oraliq cheklovsiz
+
+--------------------------------------------------------------------------------
+2. KERAKLI KUTUBXONALAR (Python 3.10+)
+--------------------------------------------------------------------------------
+Terminalda quyidagi buyruqni bering:
+    pip install aiogram aiohttp aiosqlite
+
+--------------------------------------------------------------------------------
+3. ISHGA TUSHIRISH USULLARI
+--------------------------------------------------------------------------------
+
+USUL A: Web / Python Xostinglar orqali (XUSS Hosting, cPanel, Beget va boshqalar)
+---------------------------------------------------------------------------------
+1. Xosting paneliga kiring va "Fayl menejeri" orqali "open_budget_client_bot.py" faylini yuklang.
+2. Fayl boshidagi (yoki .env dagi) quyidagi 2 ta qatorga o'zingizning ma'lumotlaringizni yozing:
+      BOT_TOKEN = "7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # @BotFather dan
+      ADMIN_ID  = 123456789                                    # Sizning Telegram ID
+3. Xostingizdagi ">_ Terminal" (Konsol) tugmasini bosing va quyidagi buyruqni bering:
+      pip3 install aiogram aiohttp aiosqlite
+   (Agar pip3 ishlamasa: pip install aiogram aiohttp aiosqlite)
+4. "Python vositalari" bo'limiga o'tib, faylni tanlang va "Doimiy ishga tushirish" tugmasini bosing.
+   Bot 24/7 rejimida avtomatik ishlab ketadi!
+
+
+USUL B: Railway.app orqali (24/7 Bulutli server)
+----------------------------------------------------------------------
+1. GitHub.com ga kiring va yangi Private (Yopiq) repo oching.
+2. "open_budget_client_bot.py" faylini shu repoga yuklang.
+3. Repoga "requirements.txt" fayl yaratib, quyidagilarni yozing:
+      aiogram>=3.0.0
+      aiohttp>=3.9.0
+      aiosqlite>=0.19.0
+4. Railway.app ga kirib "New Project" -> "Deploy from GitHub repo" ni tanlang.
+5. Loyiha ustiga bosib "Variables" bo'limida quyidagilarni kiriting:
+      BOT_TOKEN = sizning_bot_tokeningiz
+      ADMIN_ID  = sizning_telegram_idingiz
+      API_URL   = https://openbudjet-production.up.railway.app/api/v1
+6. "Settings" -> "Custom Start Command" ga:
+      python open_budget_client_bot.py
+7. Saqlang. Bot 30 soniyada avtomatik ishga tushadi!
+
+
+USUL B: VPS / Linux (Ubuntu 22.04 / 24.04) Serverda ishga tushirish
+----------------------------------------------------------------------
+1. Serverga ulaning va kerakli paketlarni o'rnating:
+      sudo apt update && sudo apt install python3 python3-pip python3-venv -y
+
+2. Loyiha papkasini yarating va fayllarni joylang:
+      mkdir ~/client_bot && cd ~/client_bot
+      # open_budget_client_bot.py faylini shu yerga yuklang
+
+3. Virtual muhit oching va kutubxonalarni o'rnating:
+      python3 -m venv venv
+      source venv/bin/activate
+      pip install aiogram aiohttp aiosqlite
+
+4. ".env" fayl yarating:
+      nano .env
+   Ichiga yozing:
+      BOT_TOKEN=7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      ADMIN_ID=123456789
+      API_URL=https://openbudjet-production.up.railway.app/api/v1
+      VOTE_COOLDOWN_HOURS=0
+
+5. Doimiy 24/7 rejimda fon xizmati (Systemd) sifatida yoqish:
+      sudo nano /etc/systemd/system/clientbot.service
+
+   Ichiga nusxalang:
+      [Unit]
+      Description=Open Budget Client Bot
+      After=network.target
+
+      [Service]
+      User=root
+      WorkingDirectory=/root/client_bot
+      ExecStart=/root/client_bot/venv/bin/python open_budget_client_bot.py
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+6. Xizmatni yoqing:
+      sudo systemctl daemon-reload
+      sudo systemctl enable clientbot
+      sudo systemctl start clientbot
+
+   Loglarni tekshirish:
+      sudo journalctl -u clientbot -f
+
+
+USUL C: Shaxsiy Kompyuterda (Windows / Mac) Sinovdan o'tkazish
+----------------------------------------------------------------------
+1. open_budget_client_bot.py joylashgan papkada terminal oching.
+2. pip install aiogram aiohttp aiosqlite
+3. .env fayl yarating (BOT_TOKEN, ADMIN_ID, API_URL).
+4. python open_budget_client_bot.py
+
+--------------------------------------------------------------------------------
+4. BOTNI SOZLASH (/admin)
+--------------------------------------------------------------------------------
+Bot ishga tushgach, o'z botingizga kirib /admin buyrug'ini yozing:
+
+0. [💳 API Kalit sotib olish] -> Bot ichidan chiqmasdan tariflarni ko'rishingiz
+   va to'lov fakturasini olib, to'g'ridan-to'g'ri API kalit sotib olishingiz mumkin.
+   Bank kartasiga to'lov tushishi bilan asosiy tizim to'lovni avtomatik aniqlaydi!
+
+1. [🔑 API Kalitni sozlash] -> Asosiy botdan sotib olgan "ob_api_..." kalitingizni
+   yuboring. Bot kalitni server bilan real vaqtda tekshirib tasdiqlaydi.
+
+2. [📌 Loyiha IDni sozlash] -> Ovoz yig'moqchi bo'lgan tashabbus ID raqamini (masalan: 32541)
+   yuboring. Bot uning nomini serverdan avtomatik oladi.
+
+3. [💰 Mukofotni sozlash] -> Har bir ovoz bergan foydalanuvchiga to'lanadigan UZS miqdorini
+   kiriting (masalan: 1500).
+
+4. [💳 Min. Pul yechishni sozlash] -> Foydalanuvchilar balansidan minimal qancha summadan
+   yechib olishi mumkinligini belgilang (masalan: 5000).
+
+--------------------------------------------------------------------------------
+6. KENG TARQALGAN SAVOLLAR VA XATOLIKLARNI TUZATISH (FAQ)
+--------------------------------------------------------------------------------
+• "Yo'q paketlar: aiosqlite" yoki "No module named aiogram":
+  -> Xostingizning Terminaliga kirib `pip3 install aiogram aiohttp aiosqlite` deb yozing.
+
+• Bot xabarlarga javob bermayapti:
+  -> BOT_TOKEN to'g'ri kiritilganligini tekshiring.
+  -> Botga o'zingiz kirib /admin buyrug'ini yuboring va API kalitni ulang.
+
+• "Bot sozlanmoqda" deb turibdi:
+  -> /admin buyrug'i orqali API Kalit va Loyiha ID sini kiriting. Ular kiritilishi
+     bilan bot to'liq ovoz qabul qilishni boshlaydi.
+
+================================================================================
+                    Muvaffaqiyatli ish va yuksak natijalar tilaymiz!
+================================================================================
