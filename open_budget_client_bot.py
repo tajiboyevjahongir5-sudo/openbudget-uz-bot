@@ -921,6 +921,22 @@ async def process_project_id(msg: Message, state: FSMContext):
     checking = await msg.answer(
         f"🔄 <b>Loyiha <code>{text}</code> tekshirilmoqda...</b>", parse_mode="HTML"
     )
+
+    # API kalit ulanmagan bo'lsa, tekshiruvni o'tkazib yuborib to'g'ridan-to'g'ri saqlaymiz
+    api_key = await get_setting("api_key")
+    if not api_key:
+        await set_setting("project_id",   text)
+        await set_setting("project_name", text)
+        await state.clear()
+        await checking.edit_text(
+            f"✅ <b>Loyiha ID saqlandi!</b>\n\n"
+            f"<i>⚠️ Eslatma: API kalit ulanmaganligi sababli loyiha nomi saytdan tekshirilmadi.</i>\n\n"
+            f"🆔 ID: <code>{text}</code>",
+            parse_mode="HTML"
+        )
+        await msg.answer("Admin panel:", reply_markup=kb_main())
+        return
+
     res, status = await call_api(f"/initiative/{text}", "GET")
 
     if status == 200 and "initiative" in res:
