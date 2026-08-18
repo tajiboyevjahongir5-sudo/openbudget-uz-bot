@@ -709,8 +709,10 @@ async def adm_buy_api(cb: CallbackQuery):
     await cb.message.answer(
         "💳 <b>API Kalit sotib olish</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "Kerakli ovozlar soniga mos tarifni tanlang.\n"
-        "To'lov bank kartasiga o'tkazilishi bilan asosiy server to'lovni avtomatik aniqlaydi va sizga API kalit taqdim etadi!",
+        "🔑 <b>API Kalit nima?</b>\n"
+        "Bu botingiz asosiy serverga ulanib, <b>captchalarni sun'iy intellekt (AI) yordamida avtomatik yechishi</b> va barqaror ishlashi uchun kerakli balans (yoqilg'i) hisoblanadi.\n\n"
+        "⚠️ <b>Muhim eslatma:</b> Ushbu tariflar odamlar yig'gan ovozi uchun to'lanadigan mukofot puli emas! Bu botingiz serverga ulanib ishlashi uchun ketadigan sarf-xarajat to'lovidir.\n\n"
+        "Botingiz uchun kerakli ovoz limitiga mos tarifni tanlang. To'lov qilingach, server uni avtomatik aniqlab, kalitni ulab beradi!",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
         parse_mode="HTML"
     )
