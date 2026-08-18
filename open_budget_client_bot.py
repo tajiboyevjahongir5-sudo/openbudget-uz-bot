@@ -601,24 +601,28 @@ async def user_is_blocked(tid: int) -> bool:
 async def cmd_start(msg: Message, state: FSMContext):
     await state.clear()
     u = msg.from_user
+
+    # Foydalanuvchi bazada mavjudligini tekshiramiz
+    conn = await get_db_conn()
+    async with conn.execute("SELECT telegram_id FROM users WHERE telegram_id=?", (u.id,)) as c:
+        is_existing = await c.fetchone() is not None
+
     await get_or_create_user(u.id, u.username or "", u.full_name or "")
 
     if await user_is_blocked(u.id):
         return await msg.answer("⛔ <b>Sizning hisobingiz bloklangan.</b>", parse_mode="HTML")
 
-    proj   = await get_setting("project_name") or await get_setting("project_id") or "Open Budget Loyihasi"
-    reward = int(await get_setting("voter_reward") or 1000)
-
     admin_note = ""
     if u.id == ADMIN_ID and not await bot_is_ready():
         admin_note = "\n\n<i>⚠️ Eslatma (Admin): API kalit ulanmagan. /admin orqali sozlang.</i>"
 
+    welcome_status = "Qayta tashrifingizdan xursandmiz." if is_existing else "Xush kelibsiz!"
+
     await msg.answer(
-        f"<tg-emoji emoji-id='5471983050186938952'>🗳️</tg-emoji> <b>Open Budget — Ovoz Berish Tizimi</b>\n\n"
-        f"Assalomu alaykum, <b>{html.escape(str(u.full_name))}</b>!\n\n"
-        f"<tg-emoji emoji-id='5471983050186938952'>📌</tg-emoji> <b>Faol loyiha:</b> <code>{proj}</code>\n\n"
-        f"<tg-emoji emoji-id='5471971711481666499'>💰</tg-emoji> <b>Har bir ovoz uchun mukofot:</b> <b>{reward:,} UZS</b>\n\n"
-        f"<tg-emoji emoji-id='5471989445409999824'>👇</tg-emoji> Boshlash uchun quyidagi tugmalardan foydalaning:{admin_note}",
+        f"🗳️ <b>Open Budget — Ovoz Berish Tizimi</b>\n\n"
+        f"Assalomu alaykum, <b>{html.escape(str(u.first_name))}</b>!\n\n"
+        f"{welcome_status}\n"
+        f"👇 Boshlash uchun quyidagi menyudan tanlang:{admin_note}",
         reply_markup=kb_main(),
         parse_mode="HTML"
     )
