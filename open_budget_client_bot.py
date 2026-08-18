@@ -475,30 +475,38 @@ def kb_cancel() -> ReplyKeyboardMarkup:
         [KeyboardButton(text="❌ Bekor qilish", style="danger")],
     ], resize_keyboard=True, is_persistent=True)
 
-async def kb_admin() -> InlineKeyboardMarkup:
+async def kb_admin() -> ReplyKeyboardMarkup:
     pending_count = len(await get_pending_withdrawals())
-    wd_badge      = f"  🔴 {pending_count} ta" if pending_count > 0 else ""
+    wd_badge      = f" ({pending_count})" if pending_count > 0 else ""
     voting_on     = await get_setting("voting_enabled") == "1"
     toggle_text   = "🟢 Ovoz berish: YOQIQ" if voting_on else "🔴 Ovoz berish: O'CHIQ"
 
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💳  API Kalit sotib olish ✨", callback_data="adm_buy_api", style="success")],
-        [InlineKeyboardButton(text="🔑  API Kalitni ulash / sozlash 🛠️", callback_data="adm_set_api", style="primary")],
-        [InlineKeyboardButton(text="📌  Loyiha IDni sozlash 🎯", callback_data="adm_set_project", style="primary")],
+    return ReplyKeyboardMarkup(keyboard=[
         [
-            InlineKeyboardButton(text="💰 Mukofot", callback_data="adm_set_reward", style="primary"),
-            InlineKeyboardButton(text="💳 Min. yechish", callback_data="adm_set_min_wd", style="primary"),
+            KeyboardButton(text="💳 API Kalit sotib olish ✨"),
+            KeyboardButton(text="🔑 API Kalitni ulash / sozlash 🛠️"),
         ],
-        [InlineKeyboardButton(text=toggle_text, callback_data="adm_toggle_vote", style="success" if voting_on else "danger")],
-        [InlineKeyboardButton(text=f"💸  Yechish so'rovlari{wd_badge}", callback_data="adm_wd_list", style="danger" if pending_count > 0 else "primary")],
-        [InlineKeyboardButton(text="👥  Foydalanuvchilar ro'yxati", callback_data="adm_users_0", style="primary")],
-        [InlineKeyboardButton(text="📊  Hisobot (TXT fayl)", callback_data="adm_report", style="primary")],
-        [InlineKeyboardButton(text="📢  Broadcast (Xabar tarqatish)", callback_data="adm_broadcast", style="primary")],
         [
-            InlineKeyboardButton(text="♻️ Yangilash", callback_data="adm_refresh", style="success"),
-            InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close", style="danger"),
+            KeyboardButton(text="📌 Loyiha IDni sozlash 🎯"),
+            KeyboardButton(text=toggle_text),
         ],
-    ])
+        [
+            KeyboardButton(text="💰 Mukofot"),
+            KeyboardButton(text="💳 Min. yechish"),
+        ],
+        [
+            KeyboardButton(text=f"💸 Yechish so'rovlari{wd_badge}"),
+            KeyboardButton(text="👥 Foydalanuvchilar ro'yxati"),
+        ],
+        [
+            KeyboardButton(text="📊 Hisobot (TXT fayl)"),
+            KeyboardButton(text="📢 Broadcast (Xabar tarqatish)"),
+        ],
+        [
+            KeyboardButton(text="♻️ Yangilash"),
+            KeyboardButton(text="✖️ Yopish"),
+        ],
+    ], resize_keyboard=True, is_persistent=True)
 
 def kb_wd_action(wd_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[
@@ -647,8 +655,172 @@ async def cmd_admin(msg: Message, state: FSMContext):
     if msg.from_user.id != ADMIN_ID:
         return
     await state.clear()
-    await msg.answer("🛠️ <b>Boshqaruv menyusi:</b>", reply_markup=kb_main(), parse_mode="HTML")
     await msg.answer(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
+
+# ─── Admin panel — matnli tugmalar (ReplyKeyboard) ───
+
+@router.message(StateFilter(None), F.text, F.from_user.id == ADMIN_ID)
+async def admin_menu_handler(msg: Message, state: FSMContext):
+    text = msg.text.strip()
+    
+    if "API Kalit sotib olish" in text:
+        loading = await msg.answer("🔄 <b>Tariflar serverdan yuklanmoqda...</b>", parse_mode="HTML")
+        res, status = await call_api("/tariffs", "GET")
+        await loading.delete()
+        
+        if status != 200 or "tariffs" not in res:
+            return await msg.answer(
+                "❌ Tariflar ro'yxatini yuklab bo'lmadi. Keyinroq urinib ko'ring.",
+                parse_mode="HTML"
+            )
+            
+        tariffs = res.get("tariffs", [])
+        if not tariffs:
+            return await msg.answer("Hozircha faol tariflar mavjud emas.", parse_mode="HTML")
+            
+        buttons = []
+        for t in tariffs:
+            buttons.append([
+                InlineKeyboardButton(
+                    text=f"📦 {t['votes']} ta Ovoz — {t['price']:,} UZS",
+                    callback_data=f"adm_tariff_{t['votes']}"
+                )
+            ])
+        buttons.append([InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back")])
+        await msg.answer(
+            "💳 <b>API Kalit sotib olish</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "🔑 <b>API Kalit nima?</b>\n"
+            "Bu botingiz asosiy serverga ulanib, <b>captchalarni sun'iy intellekt (AI) yordamida avtomatik yechishi</b> va barqaror ishlashi uchun kerakli balans (yoqilg'i) hisoblanadi.\n\n"
+            "⚠️ <b>Muhim eslatma:</b> Ushbu tariflar odamlar yig'gan ovozi uchun to'lanadigan mukofot puli emas! Bu botingiz serverga ulanib ishlashi uchun ketadigan sarf-xarajat to'lovidir.\n\n"
+            "Botingiz uchun kerakli ovoz limitiga mos tarifni tanlang. To'lov qilingach, server uni avtomatik aniqlab, kalitni ulab beradi!",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+            parse_mode="HTML"
+        )
+
+    elif "API Kalitni ulash" in text:
+        await state.set_state(AdminStates.SET_API_KEY)
+        await msg.answer(
+            "🔑 <b>Asosiy botdan sotib olgan API kalitingizni yuboring:</b>\n\n"
+            "• Kiritilgandan so'ng server bilan <b>avtomatik tekshiriladi</b>",
+            reply_markup=kb_cancel(), parse_mode="HTML"
+        )
+
+    elif "Loyiha IDni sozlash" in text:
+        api_key = await get_setting("api_key")
+        if not api_key:
+            return await msg.answer("⚠️ Avval API kalitni ulashingiz shart!")
+            
+        current = await get_setting("project_name") or await get_setting("project_id") or "—"
+        await state.set_state(AdminStates.SET_PROJECT)
+        await msg.answer(
+            f"📌 <b>Loyiha IDni yuboring:</b>\n\n"
+            f"Hozirgi: <b>{current}</b>\n\n"
+            f"<i>Raqamli ID yoki UUID (masalan: 32541)</i>",
+            reply_markup=kb_cancel(), parse_mode="HTML"
+        )
+
+    elif "Mukofot" in text:
+        current = int(await get_setting("voter_reward") or 1000)
+        await state.set_state(AdminStates.SET_REWARD)
+        await msg.answer(
+            f"💰 <b>Ovoz mukofotini kiriting (UZS):</b>\n\n"
+            f"Hozirgi qiymat: <b>{current:,} UZS</b>",
+            reply_markup=kb_cancel(), parse_mode="HTML"
+        )
+
+    elif "Min. yechish" in text:
+        current = int(await get_setting("min_withdrawal") or 5000)
+        await state.set_state(AdminStates.SET_MIN_WD)
+        await msg.answer(
+            f"💳 <b>Minimal yechish miqdorini kiriting (UZS):</b>\n\n"
+            f"Hozirgi qiymat: <b>{current:,} UZS</b>",
+            reply_markup=kb_cancel(), parse_mode="HTML"
+        )
+
+    elif "Ovoz berish:" in text:
+        current = await get_setting("voting_enabled")
+        new_val = "0" if current == "1" else "1"
+        await set_setting("voting_enabled", new_val)
+        status_txt = "yoqildi 🟢" if new_val == "1" else "o'chirildi 🔴"
+        await msg.answer(f"Ovoz berish {status_txt}!")
+        await msg.answer(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
+
+    elif "Yechish so'rovlari" in text:
+        wds = await get_pending_withdrawals()
+        if not wds:
+            return await msg.answer("📭 Kutilayotgan pul yechish so'rovlari mavjud emas.")
+            
+        for w in wds[:10]:
+            w_id, user_id, amount, card, status, date = w
+            u = await get_user(user_id)
+            username = f"@{u[1]}" if u and u[1] else "—"
+            await msg.answer(
+                f"👤 <b>Foydalanuvchi:</b> {username} (ID: {user_id})\n"
+                f"💵 <b>Summa:</b> <code>{amount:,} UZS</code>\n"
+                f"💳 <b>Karta:</b> <code>{card}</code>\n"
+                f"📅 <b>Sana:</b> {date}",
+                reply_markup=kb_wd_action(w_id),
+                parse_mode="HTML"
+            )
+
+    elif "Foydalanuvchilar ro'yxati" in text:
+        conn = await get_db_conn()
+        async with conn.execute("SELECT COUNT(*) FROM users") as c:
+            total = (await c.fetchone())[0]
+        
+        if total == 0:
+            return await msg.answer("👥 Foydalanuvchilar mavjud emas.")
+            
+        total_pages = (total + 9) // 10
+        page = 0
+        offset = page * 10
+        async with conn.execute("SELECT telegram_id, username, balance FROM users LIMIT 10 OFFSET ?", (offset,)) as c:
+            users_list = await c.fetchall()
+            
+        lines = []
+        for i, u in enumerate(users_list, start=offset+1):
+            uname = f"@{u[1]}" if u[1] else "—"
+            lines.append(f"{i}. ID: <code>{u[0]}</code> | {uname} | Balans: <b>{u[2]:,} UZS</b>")
+            
+        await msg.answer(
+            f"👥 <b>Foydalanuvchilar ro'yxati (Jami: {total} ta):</b>\n\n" + "\n".join(lines),
+            reply_markup=kb_users_nav(page, total_pages),
+            parse_mode="HTML"
+        )
+
+    elif "Hisobot" in text:
+        conn = await get_db_conn()
+        async with conn.execute("""
+            SELECT u.telegram_id, u.username, u.balance,
+                   (SELECT COUNT(*) FROM votes_history v WHERE v.telegram_id = u.telegram_id AND v.status = 'SUCCESS') as vote_count
+            FROM users u
+        """) as c:
+            users = await c.fetchall()
+            
+        report = ["ID | Username | Balans | Ovozlar soni\n" + "-"*50]
+        for u in users:
+            uname = f"@{u[1]}" if u[1] else "—"
+            report.append(f"{u[0]} | {uname} | {u[2]:,} UZS | {u[3]} ta")
+            
+        txt_data = "\n".join(report).encode("utf-8")
+        file = BufferedInputFile(txt_data, filename="foydalanuvchilar_hisoboti.txt")
+        await msg.answer_document(file, caption="📊 Bot foydalanuvchilari hisoboti")
+
+    elif "Broadcast" in text:
+        await state.set_state(AdminStates.BROADCAST)
+        await msg.answer(
+            "📢 <b>Barcha bot foydalanuvchilariga yuboriladigan xabarni kiriting:</b>\n\n"
+            "• Rasm, video yoki oddiy matn yuborishingiz mumkin.",
+            reply_markup=kb_cancel(), parse_mode="HTML"
+        )
+
+    elif "Yangilash" in text:
+        await msg.answer(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
+
+    elif "Yopish" in text:
+        await state.clear()
+        await msg.answer("Boshqaruv paneli yopildi.", reply_markup=kb_main())
 
 # ─── Admin panel — umumiy callbacks ───
 
@@ -657,7 +829,7 @@ async def adm_refresh(cb: CallbackQuery):
     if cb.from_user.id != ADMIN_ID:
         return await cb.answer()
     try:
-        await cb.message.edit_text(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
+        await cb.message.edit_text(await admin_panel_text(), parse_mode="HTML")
     except Exception:
         pass
     await cb.answer("♻️ Yangilandi!")
@@ -667,7 +839,7 @@ async def adm_back(cb: CallbackQuery):
     if cb.from_user.id != ADMIN_ID:
         return await cb.answer()
     try:
-        await cb.message.edit_text(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
+        await cb.message.edit_text(await admin_panel_text(), parse_mode="HTML")
     except Exception:
         pass
     await cb.answer()
@@ -1074,7 +1246,7 @@ async def adm_toggle_vote(cb: CallbackQuery):
     status_txt = "🟢 yoqildi" if new_val == "1" else "🔴 o'chirildi"
     await cb.answer(f"Ovoz berish {status_txt}!", show_alert=True)
     try:
-        await cb.message.edit_text(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
+        await cb.message.edit_text(await admin_panel_text(), parse_mode="HTML")
     except Exception:
         pass
 
