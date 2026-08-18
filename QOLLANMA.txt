@@ -55,7 +55,7 @@ USUL B: Railway.app orqali (24/7 Bulutli server)
 7. Saqlang. Bot 30 soniyada avtomatik ishga tushadi!
 
 
-USUL B: VPS / Linux (Ubuntu 22.04 / 24.04) Serverda ishga tushirish
+USUL C: VPS / Linux (Ubuntu 22.04 / 24.04) Serverda ishga tushirish
 ----------------------------------------------------------------------
 1. Serverga ulaning va kerakli paketlarni o'rnating:
       sudo apt update && sudo apt install python3 python3-pip python3-venv -y
@@ -104,7 +104,7 @@ USUL B: VPS / Linux (Ubuntu 22.04 / 24.04) Serverda ishga tushirish
       sudo journalctl -u clientbot -f
 
 
-USUL C: Shaxsiy Kompyuterda (Windows / Mac) Sinovdan o'tkazish
+USUL D: Shaxsiy Kompyuterda (Windows / Mac) Sinovdan o'tkazish
 ----------------------------------------------------------------------
 1. open_budget_client_bot.py joylashgan papkada terminal oching.
 2. pip install aiogram aiohttp aiosqlite

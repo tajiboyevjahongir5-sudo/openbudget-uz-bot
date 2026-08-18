@@ -75,6 +75,7 @@ async def get_db_conn() -> aiosqlite.Connection:
         _db_conn = await aiosqlite.connect(DB_PATH)
         await _db_conn.execute("PRAGMA journal_mode=WAL;")
         await _db_conn.execute("PRAGMA synchronous=NORMAL;")
+        await _db_conn.execute("PRAGMA busy_timeout=5000;")
     return _db_conn
 
 async def init_db():
@@ -310,6 +311,44 @@ async def process_withdrawal(wd_id: int, approve: bool) -> tuple:
     return True, tid, amount
 
 # ══════════════════════════════════════════════
+#  REGION VA TUMANLAR (STATIK MA'LUMOT)
+# ══════════════════════════════════════════════
+
+REGIONS = [
+    {"id": 2, "name": "Қорақалпоғистон Республикаси", "short_name": "Қорақалпоғистон Республикаси"},
+    {"id": 3, "name": "Андижон вилояти", "short_name": "Андижон вилояти"},
+    {"id": 13, "name": "Бухоро вилояти", "short_name": "Бухоро вилояти"},
+    {"id": 4, "name": "Жиззах вилояти", "short_name": "Жиззах вилояти"},
+    {"id": 5, "name": "Қашқадарё вилояти", "short_name": "Қашқадарё вилояти"},
+    {"id": 6, "name": "Навоий вилояти", "short_name": "Навоий вилояти"},
+    {"id": 7, "name": "Наманган вилояти", "short_name": "Наманган вилояти"},
+    {"id": 8, "name": "Самарқанд вилояти", "short_name": "Самарқанд вилояти"},
+    {"id": 9, "name": "Сурхондарё вилояти", "short_name": "Сурхондарё вилояти"},
+    {"id": 10, "name": "Сирдарё вилояти", "short_name": "Сирдарё вилояти"},
+    {"id": 14, "name": "Тошкент вилояти", "short_name": "Тошкент вилояти"},
+    {"id": 11, "name": "Фарғона вилояти", "short_name": "Фарғона вилояти"},
+    {"id": 12, "name": "Хоразм вилояти", "short_name": "Хоразм вилояти"},
+    {"id": 1, "name": "Тошкент шаҳри", "short_name": "Тошкент шаҳри"}
+]
+
+DISTRICTS = {
+    2: [{"id": 23, "name": "Амударё тумани"}, {"id": 12, "name": "Беруний тумани"}, {"id": 209, "name": "Бўзатов тумани"}, {"id": 15, "name": "Кегейли тумани"}, {"id": 13, "name": "Қонликўл тумани"}, {"id": 14, "name": "Қораўзак тумани"}, {"id": 16, "name": "Қўнғирот тумани"}, {"id": 24, "name": "Мўйноқ тумани"}, {"id": 25, "name": "Нукус тумани"}, {"id": 11, "name": "Нукус шаҳри"}, {"id": 17, "name": "Тахиатош тумани"}, {"id": 18, "name": "Тахтакўпир тумани"}, {"id": 19, "name": "Тўрткўл тумани"}, {"id": 20, "name": "Хўжайли тумани"}, {"id": 21, "name": "Чимбой тумани"}, {"id": 22, "name": "Шуманай тумани"}, {"id": 210, "name": "Элликқалъа тумани"}],
+    3: [{"id": 29, "name": "Андижон тумани"}, {"id": 26, "name": "Андижон шаҳри"}, {"id": 39, "name": "Асака тумани"}, {"id": 30, "name": "Балиқчи тумани"}, {"id": 32, "name": "Булоқбоши тумани"}, {"id": 31, "name": "Бўстон тумани"}, {"id": 40, "name": "Жалақудуқ тумани"}, {"id": 33, "name": "Избоскан тумани"}, {"id": 34, "name": "Қўрғонтепа тумани"}, {"id": 35, "name": "Марҳамат тумани"}, {"id": 36, "name": "Олтинкўл тумани"}, {"id": 37, "name": "Пахтаобод тумани"}, {"id": 38, "name": "Улуғнор тумани"}, {"id": 27, "name": "Хонобод шаҳри"}, {"id": 41, "name": "Хўжаобод тумани"}, {"id": 28, "name": "Шаҳрихон тумани"}],
+    13: [{"id": 171, "name": "Бухоро тумани"}, {"id": 176, "name": "Бухоро шаҳри"}, {"id": 170, "name": "Вобкент тумани"}, {"id": 169, "name": "Ғиждувон тумани"}, {"id": 168, "name": "Жондор тумани"}, {"id": 167, "name": "Когон тумани"}, {"id": 175, "name": "Когон шаҳри"}, {"id": 166, "name": "Қоракўл тумани"}, {"id": 165, "name": "Қоровулбозор тумани"}, {"id": 172, "name": "Олот тумани"}, {"id": 173, "name": "Пешку тумани"}, {"id": 174, "name": "Ромитан тумани"}, {"id": 177, "name": "Шофиркон тумани"}],
+    4: [{"id": 43, "name": "Арнасой тумани"}, {"id": 44, "name": "Бахмал тумани"}, {"id": 45, "name": "Ғаллаорол тумани"}, {"id": 54, "name": "Дўстлик тумани"}, {"id": 42, "name": "Жиззах шаҳри"}, {"id": 48, "name": "Зарбдор тумани"}, {"id": 49, "name": "Зафаробод тумани"}, {"id": 47, "name": "Зомин тумани"}, {"id": 50, "name": "Мирзачўл тумани"}, {"id": 51, "name": "Пахтакор тумани"}, {"id": 52, "name": "Фориш тумани"}, {"id": 53, "name": "Янгиобод тумани"}, {"id": 46, "name": "Шароф Рашидов тумани"}],
+    5: [{"id": 56, "name": "Ғузор тумани"}, {"id": 57, "name": "Деҳқонобод тумани"}, {"id": 60, "name": "Касби тумани"}, {"id": 61, "name": "Китоб тумани"}, {"id": 68, "name": "Косон тумани"}, {"id": 214, "name": "Кўкдала тумани"}, {"id": 58, "name": "Қамаши тумани"}, {"id": 59, "name": "Қарши тумани"}, {"id": 55, "name": "Қарши шаҳри"}, {"id": 62, "name": "Миришкор тумани"}, {"id": 63, "name": "Муборак тумани"}, {"id": 64, "name": "Нишон тумани"}, {"id": 65, "name": "Чироқчи тумани"}, {"id": 66, "name": "Шаҳрисабз тумани"}, {"id": 69, "name": "Шаҳрисабз шаҳри"}, {"id": 67, "name": "Яккабоғ тумани"}],
+    6: [{"id": 70, "name": "Ғозғон шаҳри"}, {"id": 71, "name": "Зарафшон шаҳри"}, {"id": 74, "name": "Кармана тумани"}, {"id": 73, "name": "Конимех тумани"}, {"id": 75, "name": "Қизилтепа тумани"}, {"id": 76, "name": "Навбаҳор тумани"}, {"id": 72, "name": "Навоий шаҳри"}, {"id": 77, "name": "Нурота тумани"}, {"id": 78, "name": "Томди тумани"}, {"id": 79, "name": "Учқудуқ тумани"}, {"id": 80, "name": "Хатирчи тумани"}],
+    7: [{"id": 213, "name": "Давлатобод тумани"}, {"id": 83, "name": "Косонсой тумани"}, {"id": 85, "name": "Мингбулоқ тумани"}, {"id": 86, "name": "Наманган тумани"}, {"id": 81, "name": "Наманган шаҳри"}, {"id": 87, "name": "Норин тумани"}, {"id": 88, "name": "Поп тумани"}, {"id": 89, "name": "Тўрақўрғон тумани"}, {"id": 90, "name": "Уйчи тумани"}, {"id": 91, "name": "Учқўрғон тумани"}, {"id": 92, "name": "Чортоқ тумани"}, {"id": 93, "name": "Чуст тумани"}, {"id": 84, "name": "Янги Наманган тумани"}],
+    8: [{"id": 107, "name": "Булунғур тумани"}, {"id": 101, "name": "Жомбой тумани"}, {"id": 100, "name": "Иштихон тумани"}, {"id": 106, "name": "Каттақўрғон тумани"}, {"id": 108, "name": "Каттақўрғон шаҳри"}, {"id": 99, "name": "Қўшрабод тумани"}, {"id": 103, "name": "Нарпай тумани"}, {"id": 105, "name": "Нуробод тумани"}, {"id": 95, "name": "Оқдарё тумани"}, {"id": 96, "name": "Пайариқ тумани"}, {"id": 97, "name": "Пастдарғом тумани"}, {"id": 98, "name": "Пахтачи тумани"}, {"id": 104, "name": "Самарқанд тумани"}, {"id": 94, "name": "Самарқанд шаҳри"}, {"id": 102, "name": "Тайлоқ тумани"}, {"id": 109, "name": "Ургут тумани"}],
+    9: [{"id": 122, "name": "Ангор тумани"}, {"id": 207, "name": "Бандихон тумани"}, {"id": 118, "name": "Бойсун тумани"}, {"id": 117, "name": "Денов тумани"}, {"id": 116, "name": "Жарқўрғон тумани"}, {"id": 115, "name": "Қизириқ тумани"}, {"id": 114, "name": "Қумқўрғон тумани"}, {"id": 113, "name": "Музработ тумани"}, {"id": 119, "name": "Олтинсой тумани"}, {"id": 120, "name": "Сариосиё тумани"}, {"id": 110, "name": "Термиз тумани"}, {"id": 111, "name": "Термиз шаҳри"}, {"id": 121, "name": "Узун тумани"}, {"id": 112, "name": "Шерабод тумани"}, {"id": 123, "name": "Шўрчи тумани"}],
+    10: [{"id": 128, "name": "Боёвут тумани"}, {"id": 127, "name": "Гулистон тумани"}, {"id": 133, "name": "Гулистон шаҳри"}, {"id": 126, "name": "Мирзаобод тумани"}, {"id": 129, "name": "Оқолтин тумани"}, {"id": 130, "name": "Сардоба тумани"}, {"id": 125, "name": "Сирдарё тумани"}, {"id": 131, "name": "Ховос тумани"}, {"id": 132, "name": "Ширин шаҳри"}, {"id": 124, "name": "Янгиер шаҳри"}],
+    14: [{"id": 180, "name": "Ангрен шаҳри"}, {"id": 184, "name": "Бекобод тумани"}, {"id": 181, "name": "Бекобод шаҳри"}, {"id": 185, "name": "Бўка тумани"}, {"id": 195, "name": "Бўстонлиқ тумани"}, {"id": 196, "name": "Зангиота тумани"}, {"id": 186, "name": "Қибрай тумани"}, {"id": 187, "name": "Қуйичирчиқ тумани"}, {"id": 197, "name": "Нурафшон шаҳри"}, {"id": 188, "name": "Оққўрғон тумани"}, {"id": 189, "name": "Оҳангарон тумани"}, {"id": 182, "name": "Оҳангарон шаҳри"}, {"id": 190, "name": "Паркент тумани"}, {"id": 191, "name": "Пискент тумани"}, {"id": 192, "name": "Тошкент тумани"}, {"id": 193, "name": "Ўртачирчиқ тумани"}, {"id": 194, "name": "Чиноз тумани"}, {"id": 183, "name": "Чирчиқ шаҳри"}, {"id": 208, "name": "Юқоричирчиқ тумани"}],
+    11: [{"id": 134, "name": "Бешариқ тумани"}, {"id": 135, "name": "Боғдод тумани"}, {"id": 151, "name": "Бувайда тумани"}, {"id": 150, "name": "Данғара тумани"}, {"id": 140, "name": "Ёзёвон тумани"}, {"id": 152, "name": "Қувасой шаҳри"}, {"id": 149, "name": "Қува тумани"}, {"id": 139, "name": "Қўқон шаҳри"}, {"id": 148, "name": "Қўштепа тумани"}, {"id": 138, "name": "Марғилон шаҳри"}, {"id": 141, "name": "Олтиариқ тумани"}, {"id": 147, "name": "Риштон тумани"}, {"id": 142, "name": "Сўх тумани"}, {"id": 143, "name": "Тошлоқ тумани"}, {"id": 144, "name": "Учкўприк тумани"}, {"id": 145, "name": "Фарғона тумани"}, {"id": 137, "name": "Фарғона шаҳри"}, {"id": 146, "name": "Фурқат тумани"}],
+    12: [{"id": 162, "name": "Боғот тумани"}, {"id": 161, "name": "Гурлан тумани"}, {"id": 160, "name": "Қўшкўпир тумани"}, {"id": 159, "name": "Урганч тумани"}, {"id": 153, "name": "Урганч шаҳри"}, {"id": 158, "name": "Хазорасп тумани"}, {"id": 157, "name": "Хива тумани"}, {"id": 154, "name": "Хива шаҳри"}, {"id": 156, "name": "Хонқа тумани"}, {"id": 163, "name": "Шовот тумани"}, {"id": 164, "name": "Янгиариқ тумани"}, {"id": 155, "name": "Янгибозор тумани"}, {"id": 211, "name": "Тупроққалъа тумани"}],
+    1: [{"id": 1, "name": "Бектемир тумани"}, {"id": 198, "name": "Мирзо Улуғбек тумани"}, {"id": 9, "name": "Миробод тумани"}, {"id": 8, "name": "Олмазор тумани"}, {"id": 6, "name": "Сергели тумани"}, {"id": 4, "name": "Учтепа тумани"}, {"id": 3, "name": "Чилонзор тумани"}, {"id": 5, "name": "Шайхонтоҳур тумани"}, {"id": 7, "name": "Юнусобод тумани"}, {"id": 2, "name": "Яккасарой тумани"}, {"id": 10, "name": "Яшнобод тумани"}, {"id": 212, "name": "Янгиҳаёт тумани"}]
+}
+
+# ══════════════════════════════════════════════
 #  BOT & ROUTER
 # ══════════════════════════════════════════════
 
@@ -326,6 +365,14 @@ class VoteStates(StatesGroup):
     CAPTCHA_1  = State()
     SMS        = State()
     CAPTCHA_2  = State()
+    # Ro'yxatdan o'tish
+    REG_NAME     = State()
+    REG_BIRTHDAY = State()
+    REG_GENDER   = State()
+    REG_REGION   = State()
+    REG_DISTRICT = State()
+    REG_CAPTCHA  = State()
+    REG_SMS      = State()
 
 class AdminStates(StatesGroup):
     SET_API_KEY   = State()
@@ -382,6 +429,25 @@ async def validate_api_key(key: str) -> tuple[bool, str]:
 # ══════════════════════════════════════════════
 #  KLABYATURALAR (KEYBOARDS)
 # ══════════════════════════════════════════════
+
+def kb_regions() -> InlineKeyboardMarkup:
+    buttons = []
+    for r in REGIONS:
+        buttons.append([InlineKeyboardButton(text=r["name"], callback_data=f"reg_reg_{r['id']}")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def kb_districts(region_id: int) -> InlineKeyboardMarkup:
+    buttons = []
+    districts = DISTRICTS.get(region_id, [])
+    for d in districts:
+        buttons.append([InlineKeyboardButton(text=d["name"], callback_data=f"reg_dist_{region_id}_{d['id']}")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def kb_gender() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="👨 Erkak", callback_data="reg_gender_M"),
+        InlineKeyboardButton(text="👩 Ayol", callback_data="reg_gender_F"),
+    ]])
 
 def kb_main() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(keyboard=[
@@ -1457,6 +1523,39 @@ async def vote_phone(msg: Message, state: FSMContext):
     captcha = res["captcha"]
     await state.update_data(captcha_key=captcha["key"])
 
+    solved_result = captcha.get("solved_result")
+    if solved_result is not None:
+        await loading.delete()
+        sending = await msg.answer("🤖 <b>Captcha avtomatik yechildi. SMS kod yuborilmoqda...</b>", parse_mode="HTML")
+        res_otp, status_otp = await call_api("/send-otp", "POST", {
+            "phone_number": phone,
+            "captcha_key":  captcha["key"],
+            "captcha_result": int(solved_result),
+            "project_id":   await get_setting("project_id"),
+        })
+        
+        if status_otp != 200:
+            err = res_otp.get("detail", "")
+            err_lower = err.lower()
+            not_reg_keywords = ["not_registered", "topilmadi", "foydalanuvchi",
+                "топилмади", "фойдаланувчи", "маъluмотlari", "ҳеч қандай", "mavjud emas"]
+            if any(k in err_lower for k in not_reg_keywords):
+                await sending.delete()
+                await start_reg_flow(msg, state, phone)
+                return
+            await state.clear()
+            await sending.delete()
+            return await msg.answer(f"❌ {err or 'Xatolik yuz berdi.'}", reply_markup=kb_main())
+
+        await state.update_data(otp_key=res_otp.get("otp_key"))
+        await sending.edit_text(
+            f"📩 <b>SMS kod yuborildi!</b>\n\n"
+            f"<code>{phone}</code> raqamiga yuborilgan <b>6 xonali kodni</b> kiriting:",
+            parse_mode="HTML"
+        )
+        await state.set_state(VoteStates.SMS)
+        return
+
     try:
         image_bytes = base64.b64decode(captcha["image"].split(",")[-1])
     except Exception:
@@ -1493,10 +1592,17 @@ async def vote_captcha1(msg: Message, state: FSMContext):
     })
 
     if status != 200:
-        err = res.get("detail", "Xatolik yuz berdi.")
+        err = res.get("detail", "")
+        err_lower = err.lower()
+        not_reg_keywords = ["not_registered", "topilmadi", "foydalanuvchi",
+            "топилмади", "фойдаланувчи", "маълумотлари", "ҳеч қандай", "mavjud emas"]
+        if any(k in err_lower for k in not_reg_keywords):
+            await sending.delete()
+            await start_reg_flow(msg, state, data["phone"])
+            return
         await state.clear()
         await sending.delete()
-        return await msg.answer(f"❌ {err}", reply_markup=kb_main())
+        return await msg.answer(f"❌ {err or 'Xatolik yuz berdi.'}", reply_markup=kb_main())
 
     await state.update_data(otp_key=res.get("otp_key"))
     await sending.edit_text(
@@ -1505,6 +1611,291 @@ async def vote_captcha1(msg: Message, state: FSMContext):
         parse_mode="HTML"
     )
     await state.set_state(VoteStates.SMS)
+
+# ─── REGISTRATION FLOW ───
+
+async def start_reg_flow(msg: Message, state: FSMContext, phone: str):
+    await state.update_data(phone=phone)
+    await state.set_state(VoteStates.REG_NAME)
+    await msg.answer(
+        f"✅ <b>Telefon raqam: +{phone}</b>\n\n"
+        "📋 <b>Ro'yxatdan o'tish kerak!</b>\n\n"
+        "1️⃣ <b>Ism va Familiyangizni kiriting:</b>\n"
+        "<i>(Masalan: Aliyev Jahongir)</i>",
+        reply_markup=kb_cancel(), parse_mode="HTML"
+    )
+
+@router.message(VoteStates.REG_NAME, F.text)
+async def reg_name(msg: Message, state: FSMContext):
+    if msg.text and msg.text in ("🔙 Orqaga", "❌ Bekor qilish"):
+        await state.clear()
+        return await msg.answer("Bekor qilindi.", reply_markup=kb_main())
+    
+    await state.update_data(fullname=msg.text.strip())
+    await state.set_state(VoteStates.REG_BIRTHDAY)
+    await msg.answer(
+        "2️⃣ <b>Tug'ilgan sanangizni kiriting:</b>\n"
+        "<i>(Masalan: 01.01.1998)</i>",
+        reply_markup=kb_cancel(), parse_mode="HTML"
+    )
+
+@router.message(VoteStates.REG_BIRTHDAY, F.text)
+async def reg_birthday(msg: Message, state: FSMContext):
+    if msg.text and msg.text in ("🔙 Orqaga", "❌ Bekor qilish"):
+        await state.clear()
+        return await msg.answer("Bekor qilindi.", reply_markup=kb_main())
+    
+    text = msg.text.strip()
+    try:
+        dt = datetime.strptime(text, "%d.%m.%Y")
+        birth_date = dt.strftime("%Y-%m-%d")
+    except ValueError:
+        return await msg.answer("❌ Noto'g'ri format. Iltimos, DD.MM.YYYY formatida kiriting (masalan: 01.01.1998):")
+    
+    await state.update_data(birth_date=birth_date)
+    await state.set_state(VoteStates.REG_GENDER)
+    await msg.answer("3️⃣ <b>Jinsingizni tanlang:</b>", reply_markup=kb_gender(), parse_mode="HTML")
+
+@router.callback_query(F.data.startswith("reg_gender_"), VoteStates.REG_GENDER)
+async def reg_gender(cb: CallbackQuery, state: FSMContext):
+    gender = cb.data.split("_")[-1]
+    await state.update_data(gender=gender)
+    await state.set_state(VoteStates.REG_REGION)
+    await cb.message.edit_text("4️⃣ <b>Viloyatni tanlang:</b>", reply_markup=kb_regions(), parse_mode="HTML")
+    await cb.answer()
+
+@router.callback_query(F.data.startswith("reg_reg_"), VoteStates.REG_REGION)
+async def reg_region(cb: CallbackQuery, state: FSMContext):
+    region_id = int(cb.data.split("_")[-1])
+    await state.update_data(region_id=region_id)
+    await state.set_state(VoteStates.REG_DISTRICT)
+    await cb.message.edit_text("5️⃣ <b>Tumanni tanlang:</b>", reply_markup=kb_districts(region_id), parse_mode="HTML")
+    await cb.answer()
+
+@router.callback_query(F.data.startswith("reg_dist_"), VoteStates.REG_DISTRICT)
+async def reg_district(cb: CallbackQuery, state: FSMContext):
+    district_id = int(cb.data.split("_")[-1])
+    await state.update_data(district_id=district_id)
+    
+    await cb.message.delete()
+    loading = await cb.message.answer("🔄 <b>Captcha yuklanmoqda...</b>", parse_mode="HTML")
+    
+    res, status = await call_api("/captcha", "POST")
+    if status != 200 or "captcha" not in res:
+        await state.clear()
+        await loading.delete()
+        return await cb.message.answer("❌ Captcha yuklashda xatolik yuz berdi.", reply_markup=kb_main())
+
+    captcha = res["captcha"]
+    await state.update_data(reg_captcha_key=captcha["key"])
+
+    solved_result = captcha.get("solved_result")
+    if solved_result is not None:
+        await loading.delete()
+        sending = await cb.message.answer("🤖 <b>Captcha avtomatik yechildi. Ro'yxatdan o'tish ma'lumotlari yuborilmoqda...</b>", parse_mode="HTML")
+        data = await state.get_data()
+        
+        payload = {
+            "captcha_key": captcha["key"],
+            "captcha_result": int(solved_result),
+            "phone_number": data["phone"],
+            "district_id": data["district_id"],
+            "fullname": data["fullname"],
+            "gender": data["gender"],
+            "birth_date": data["birth_date"],
+            "profession": "Xodim",
+            "region_id": data["region_id"]
+        }
+        
+        import aiohttp
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Referer": "https://openbudget.uz/",
+            "Origin": "https://openbudget.uz"
+        }
+        try:
+            session = await get_http_session()
+            async with session.post("https://openbudget.uz/v1/register/send-otp", json=payload, headers=headers) as resp:
+                res_reg = await resp.json()
+                status_reg = resp.status
+        except Exception as e:
+            await state.clear()
+            await sending.delete()
+            await cb.answer()
+            return await cb.message.answer(f"❌ Server xatosi: {e}", reply_markup=kb_main())
+
+        if status_reg != 200:
+            err = res_reg.get("message", "Xatolik yuz berdi.")
+            await state.clear()
+            await sending.delete()
+            await cb.answer()
+            return await cb.message.answer(f"❌ {err}", reply_markup=kb_main())
+
+        await state.update_data(reg_otp_key=res_reg.get("otp_key") or res_reg.get("key", ""))
+        await sending.edit_text(
+            f"📩 <b>Registratsiya SMS kodi yuborildi!</b>\n\n"
+            f"<code>{data['phone']}</code> raqamiga yuborilgan <b>6 xonali kodni</b> kiriting:",
+            parse_mode="HTML"
+        )
+        await state.set_state(VoteStates.REG_SMS)
+        await cb.answer()
+        return
+
+    try:
+        image_bytes = base64.b64decode(captcha["image"].split(",")[-1])
+    except Exception:
+        image_bytes = base64.b64decode(captcha["image"])
+
+    photo = BufferedInputFile(image_bytes, filename="reg_captcha.png")
+    await loading.delete()
+    await cb.message.answer_photo(
+        photo,
+        caption="6️⃣ <b>Rasmdagi raqamlarni kiriting (Registratsiya):</b>",
+        reply_markup=kb_cancel(), parse_mode="HTML"
+    )
+    await state.set_state(VoteStates.REG_CAPTCHA)
+    await cb.answer()
+
+@router.message(VoteStates.REG_CAPTCHA, F.text)
+async def reg_captcha(msg: Message, state: FSMContext):
+    if msg.text and msg.text in ("🔙 Orqaga", "❌ Bekor qilish"):
+        await state.clear()
+        return await msg.answer("Bekor qilindi.", reply_markup=kb_main())
+    
+    if not msg.text.isdigit():
+        return await msg.answer("❌ Faqat rasmdagi <b>raqamlarni</b> kiriting:", parse_mode="HTML")
+    
+    data = await state.get_data()
+    sending = await msg.answer("🔄 <b>Ro'yxatdan o'tish ma'lumotlari yuborilmoqda...</b>", parse_mode="HTML")
+    
+    payload = {
+        "captcha_key": data["reg_captcha_key"],
+        "captcha_result": int(msg.text),
+        "phone_number": data["phone"],
+        "district_id": data["district_id"],
+        "fullname": data["fullname"],
+        "gender": data["gender"],
+        "birth_date": data["birth_date"],
+        "profession": "Xodim",
+        "region_id": data["region_id"]
+    }
+    
+    import aiohttp
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Referer": "https://openbudget.uz/",
+        "Origin": "https://openbudget.uz"
+    }
+    try:
+        session = await get_http_session()
+        async with session.post("https://openbudget.uz/v1/register/send-otp", json=payload, headers=headers) as resp:
+            res = await resp.json()
+            status = resp.status
+    except Exception as e:
+        await state.clear()
+        await sending.delete()
+        return await msg.answer(f"❌ Server xatosi: {e}", reply_markup=kb_main())
+
+    if status != 200:
+        err = res.get("message", "Xatolik yuz berdi.")
+        await state.clear()
+        await sending.delete()
+        return await msg.answer(f"❌ {err}", reply_markup=kb_main())
+
+    await state.update_data(reg_otp_key=res.get("otp_key") or res.get("key", ""))
+    await sending.edit_text(
+        "📩 <b>Registratsiya SMS kodi yuborildi!</b>\n\n"
+        "Telefoningizga kelgan <b>6 xonali kodni</b> kiriting:",
+        parse_mode="HTML"
+    )
+    await state.set_state(VoteStates.REG_SMS)
+
+@router.message(VoteStates.REG_SMS, F.text)
+async def reg_sms(msg: Message, state: FSMContext):
+    if msg.text and msg.text in ("🔙 Orqaga", "❌ Bekor qilish"):
+        await state.clear()
+        return await msg.answer("Bekor qilindi.", reply_markup=kb_main())
+    
+    if len(msg.text) != 6 or not msg.text.isdigit():
+        return await msg.answer("❌ SMS kod <b>6 xonali</b> bo'lishi kerak:", parse_mode="HTML")
+    
+    data = await state.get_data()
+    checking = await msg.answer("🔄 <b>Kod tekshirilmoqda...</b>", parse_mode="HTML")
+    
+    payload = {
+        "phone_number": data["phone"],
+        "otp_code": msg.text,
+        "otp_key": data.get("reg_otp_key", "")
+    }
+    
+    import aiohttp
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Referer": "https://openbudget.uz/",
+        "Origin": "https://openbudget.uz"
+    }
+    try:
+        session = await get_http_session()
+        async with session.post("https://openbudget.uz/v1/register/verify-otp", json=payload, headers=headers) as resp:
+            res = await resp.json()
+            status = resp.status
+    except Exception as e:
+        await state.clear()
+        await checking.delete()
+        return await msg.answer(f"❌ Server xatosi: {e}", reply_markup=kb_main())
+
+    if status != 200:
+        err = res.get("message", "SMS kod xato yoki eskirgan.")
+        await state.clear()
+        await checking.delete()
+        return await msg.answer(f"❌ {err}", reply_markup=kb_main())
+
+    await state.update_data(access_token=res.get("access_token"))
+    
+    # Muvaffaqiyatli ro'yxatdan o'tdi, darhol ovoz berish uchun 2-captcha yuklanadi
+    await checking.edit_text("✅ <b>Muvaffaqiyatli ro'yxatdan o'tdingiz!</b>\n\n🔄 <b>Ovozni tasdiqlash uchun captcha yuklanmoqda...</b>", parse_mode="HTML")
+    
+    res2, status2 = await call_api("/captcha", "POST")
+    if status2 != 200 or "captcha" not in res2:
+        await state.clear()
+        await checking.delete()
+        return await msg.answer("❌ 2-captcha yuklashda xato.", reply_markup=kb_main())
+
+    captcha2 = res2["captcha"]
+    await state.update_data(captcha_key_2=captcha2["key"])
+
+    solved_result2 = captcha2.get("solved_result")
+    if solved_result2 is not None:
+        await execute_cast_vote(
+            msg=msg,
+            state=state,
+            access_token=res.get("access_token"),
+            phone=data["phone"],
+            captcha_key=captcha2["key"],
+            captcha_result=int(solved_result2),
+            waiting_msg_to_delete=checking
+        )
+        return
+
+    try:
+        image_bytes = base64.b64decode(captcha2["image"].split(",")[-1])
+    except Exception:
+        image_bytes = base64.b64decode(captcha2["image"])
+
+    photo = BufferedInputFile(image_bytes, filename="captcha2.png")
+    await checking.delete()
+    await msg.answer_photo(
+        photo,
+        caption="🧩 <b>Ovozni tasdiqlash uchun yangi rasmdagi raqamlarni kiriting:</b>",
+        reply_markup=kb_cancel(), parse_mode="HTML"
+    )
+    await state.set_state(VoteStates.CAPTCHA_2)
 
 # ─── Qadam 3: SMS kod ───
 
@@ -1546,6 +1937,19 @@ async def vote_sms(msg: Message, state: FSMContext):
     captcha2 = res2["captcha"]
     await state.update_data(captcha_key_2=captcha2["key"])
 
+    solved_result2 = captcha2.get("solved_result")
+    if solved_result2 is not None:
+        await execute_cast_vote(
+            msg=msg,
+            state=state,
+            access_token=res.get("access_token"),
+            phone=data["phone"],
+            captcha_key=captcha2["key"],
+            captcha_result=int(solved_result2),
+            waiting_msg_to_delete=checking
+        )
+        return
+
     try:
         image_bytes = base64.b64decode(captcha2["image"].split(",")[-1])
     except Exception:
@@ -1560,29 +1964,24 @@ async def vote_sms(msg: Message, state: FSMContext):
     )
     await state.set_state(VoteStates.CAPTCHA_2)
 
-# ─── Qadam 4: 2-Captcha va Yakuniy Ovoz ───
-
-@router.message(VoteStates.CAPTCHA_2, F.text)
-async def vote_captcha2(msg: Message, state: FSMContext):
-    text = msg.text.strip()
-    if text == "❌ Bekor qilish":
-        await state.clear()
-        return await msg.answer("Bekor qilindi.", reply_markup=kb_main())
-    if not text.isdigit():
-        return await msg.answer("❌ Faqat rasmdagi <b>raqamlarni</b> kiriting:", parse_mode="HTML")
-
-    data     = await state.get_data()
-    casting  = await msg.answer("⚡ <b>Ovoz berilmoqda...</b>", parse_mode="HTML")
-
+async def execute_cast_vote(msg: Message, state: FSMContext, access_token: str, phone: str, captcha_key: str, captcha_result: int, waiting_msg_to_delete: Message = None):
+    if waiting_msg_to_delete:
+        try:
+            await waiting_msg_to_delete.delete()
+        except Exception:
+            pass
+    casting = await msg.answer("⚡ <b>Ovoz berilmoqda...</b>", parse_mode="HTML")
+    
     res, status = await call_api("/cast-vote", "POST", {
         "project_id":   await get_setting("project_id"),
-        "access_token": data["access_token"],
-        "captcha_key":  data["captcha_key_2"],
-        "captcha_result": int(text),
+        "access_token": access_token,
+        "captcha_key":  captcha_key,
+        "captcha_result": captcha_result,
+        "phone_number":   phone,
     })
-
+    
     await state.clear()
-
+    
     if status != 200:
         err = res.get("detail", "Ovoz berish muvaffaqiyatsiz tugadi.")
         await casting.delete()
@@ -1590,7 +1989,7 @@ async def vote_captcha2(msg: Message, state: FSMContext):
 
     # ── Muvaffaqiyatli ovoz ──
     reward = int(await get_setting("voter_reward") or 1000)
-    await add_vote(msg.from_user.id, data["phone"], reward)
+    await add_vote(msg.from_user.id, phone, reward)
 
     u       = await get_user(msg.from_user.id)
     new_bal = u[3] if u else reward
@@ -1602,6 +2001,27 @@ async def vote_captcha2(msg: Message, state: FSMContext):
         f"<tg-emoji emoji-id='5469950790893946284'>💎</tg-emoji> Yangi hamyon balansi: <b>{new_bal:,} UZS</b>\n\n"
         "Davom eting — qancha ko'p ovoz, shuncha ko'p daromad! 🚀",
         reply_markup=kb_main(), parse_mode="HTML"
+    )
+
+# ─── Qadam 4: 2-Captcha va Yakuniy Ovoz ───
+
+@router.message(VoteStates.CAPTCHA_2, F.text)
+async def vote_captcha2(msg: Message, state: FSMContext):
+    text = msg.text.strip()
+    if text == "❌ Bekor qilish":
+        await state.clear()
+        return await msg.answer("Bekor qilindi.", reply_markup=kb_main())
+    if not text.isdigit():
+        return await msg.answer("❌ Faqat rasmdagi <b>raqamlarni</b> kiriting:", parse_mode="HTML")
+
+    data = await state.get_data()
+    await execute_cast_vote(
+        msg=msg,
+        state=state,
+        access_token=data["access_token"],
+        phone=data["phone"],
+        captcha_key=data["captcha_key_2"],
+        captcha_result=int(text)
     )
 
 # ══════════════════════════════════════════════
