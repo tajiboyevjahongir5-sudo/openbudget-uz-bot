@@ -68,7 +68,7 @@ Tabriklaymiz! Botingiz ovozlarni qabul qilishga to'liq tayyor! 🚀
 ## ☁️ Serverda 24/7 Ishga Tushirish
 
 - **XUSS Hosting / cPanel / Beget**: Faylni yuklab, Terminalda `pip3 install aiogram aiohttp aiosqlite` buyrug'ini yozing va "Doimiy ishga tushirish"ni bosing.
-- **Railway.app**: Ushbu GitHub repozitoriyani to'g'ridan-to'g'ri ulab, Variables bo'limiga `BOT_TOKEN` va `ADMIN_ID` ni qo'ying.
+- **Railway.app**: Ushbu GitHub repozitoriyani ulab, Variables bo'limiga `BOT_TOKEN` va `ADMIN_ID` ni qo'ying. **Muhim:** Server yangilanganda sozlamalar (API kalit, loyiha ID va foydalanuvchilar) o'chib ketmasligi uchun Settings bo'limidan **Volume** qo'shing (Mount Volume) va Variables bo'limiga `DATABASE_PATH` nomli o'zgaruvchi yaratib, qiymatiga `/data/client_bot.db` deb yozing.
 - **VPS / Ubuntu Linux**: `QOLLANMA.txt` faylidagi Systemd ko'rsatmalariga qarang.
 
 ---

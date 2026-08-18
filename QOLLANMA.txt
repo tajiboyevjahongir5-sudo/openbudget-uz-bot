@@ -47,12 +47,14 @@ USUL B: Railway.app orqali (24/7 Bulutli server)
       aiosqlite>=0.19.0
 4. Railway.app ga kirib "New Project" -> "Deploy from GitHub repo" ni tanlang.
 5. Loyiha ustiga bosib "Variables" bo'limida quyidagilarni kiriting:
-      BOT_TOKEN = sizning_bot_tokeningiz
-      ADMIN_ID  = sizning_telegram_idingiz
-      API_URL   = https://openbudjet-production.up.railway.app/api/v1
-6. "Settings" -> "Custom Start Command" ga:
-      python open_budget_client_bot.py
-7. Saqlang. Bot 30 soniyada avtomatik ishga tushadi!
+      BOT_TOKEN     = sizning_bot_tokeningiz
+      ADMIN_ID      = sizning_telegram_idingiz
+      API_URL       = https://openbudjet-production.up.railway.app/api/v1
+      DATABASE_PATH = /data/client_bot.db
+6. "Settings" bo'limiga o'ting:
+   - "Custom Start Command" ga: `python open_budget_client_bot.py`
+   - Pastroqdagi "Volumes" bo'limidan "Mount Volume" (disk ulash) tugmasini bosing (1GB yetarli).
+7. Saqlang. Barcha sozlamalar (API kalit, loyiha ID) diskda doimiy saqlanib qoladi va o'chib ketmaydi! Bot 30 soniyada ishga tushadi.
 
 
 USUL C: VPS / Linux (Ubuntu 22.04 / 24.04) Serverda ishga tushirish
