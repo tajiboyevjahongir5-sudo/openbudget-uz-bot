@@ -467,7 +467,7 @@ def kb_phone() -> ReplyKeyboardMarkup:
 
 def kb_cancel() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text="❌ Jarayonni bekor qilish", style="danger")],
+        [KeyboardButton(text="❌ Bekor qilish", style="danger")],
     ], resize_keyboard=True, is_persistent=True)
 
 async def kb_admin() -> InlineKeyboardMarkup:
