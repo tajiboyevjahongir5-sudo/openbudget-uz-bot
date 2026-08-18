@@ -16,6 +16,7 @@ O'rnatish:
 """
 
 import logging
+import html
 import asyncio
 import os
 import aiohttp
