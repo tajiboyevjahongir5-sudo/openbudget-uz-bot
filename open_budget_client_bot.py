@@ -901,6 +901,12 @@ async def process_api_key(msg: Message, state: FSMContext):
 async def adm_set_project(cb: CallbackQuery, state: FSMContext):
     if cb.from_user.id != ADMIN_ID:
         return await cb.answer()
+
+    # API kalit ulanmaganligini tekshiramiz
+    api_key = await get_setting("api_key")
+    if not api_key:
+        return await cb.answer("⚠️ Avval API kalitni ulashingiz shart!", show_alert=True)
+
     current = await get_setting("project_name") or await get_setting("project_id") or "—"
     await state.set_state(AdminStates.SET_PROJECT)
     await cb.message.answer(
@@ -922,19 +928,10 @@ async def process_project_id(msg: Message, state: FSMContext):
         f"🔄 <b>Loyiha <code>{text}</code> tekshirilmoqda...</b>", parse_mode="HTML"
     )
 
-    # API kalit ulanmagan bo'lsa, tekshiruvni o'tkazib yuborib to'g'ridan-to'g'ri saqlaymiz
     api_key = await get_setting("api_key")
     if not api_key:
-        await set_setting("project_id",   text)
-        await set_setting("project_name", text)
         await state.clear()
-        await checking.edit_text(
-            f"✅ <b>Loyiha ID saqlandi!</b>\n\n"
-            f"<i>⚠️ Eslatma: API kalit ulanmaganligi sababli loyiha nomi saytdan tekshirilmadi.</i>\n\n"
-            f"🆔 ID: <code>{text}</code>",
-            parse_mode="HTML"
-        )
-        await msg.answer("Admin panel:", reply_markup=kb_main())
+        await checking.edit_text("❌ Xatolik: API kalit ulanmagan. Sozlash bekor qilindi.")
         return
 
     res, status = await call_api(f"/initiative/{text}", "GET")
