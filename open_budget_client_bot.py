@@ -53,7 +53,7 @@ ADMIN_ID            = int(os.getenv("ADMIN_ID", "0"))
 API_URL             = os.getenv("API_URL", "https://openbudjet-production.up.railway.app/api/v1")
 VOTE_COOLDOWN_HOURS = int(os.getenv("VOTE_COOLDOWN_HOURS", "0"))  # 0 = cheklovsiz
 
-DB_PATH = "client_bot.db"
+DB_PATH = os.getenv("DATABASE_PATH", "client_bot.db")
 
 _http_session: aiohttp.ClientSession | None = None
 
@@ -73,6 +73,11 @@ _db_conn: aiosqlite.Connection | None = None
 async def get_db_conn() -> aiosqlite.Connection:
     global _db_conn
     if _db_conn is None:
+        # Agar ma'lumotlar bazasi papkasi mavjud bo'lmasa, uni yaratamiz
+        db_dir = os.path.dirname(DB_PATH)
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
+            
         _db_conn = await aiosqlite.connect(DB_PATH)
         await _db_conn.execute("PRAGMA journal_mode=WAL;")
         await _db_conn.execute("PRAGMA synchronous=NORMAL;")
