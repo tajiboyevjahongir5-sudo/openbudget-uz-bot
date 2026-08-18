@@ -613,8 +613,13 @@ async def cmd_start(msg: Message, state: FSMContext):
         return await msg.answer("⛔ <b>Sizning hisobingiz bloklangan.</b>", parse_mode="HTML")
 
     admin_note = ""
-    if u.id == ADMIN_ID and not await bot_is_ready():
-        admin_note = "\n\n<i>⚠️ Eslatma (Admin): API kalit ulanmagan. /admin orqali sozlang.</i>"
+    if u.id == ADMIN_ID:
+        api_key = await get_setting("api_key")
+        project_id = await get_setting("project_id")
+        if not api_key:
+            admin_note = "\n\n<i>⚠️ Eslatma (Admin): API kalit ulanmagan. /admin orqali sozlang.</i>"
+        elif not project_id:
+            admin_note = "\n\n<i>⚠️ Eslatma (Admin): Loyiha ID sozlanmagan. /admin orqali sozlang.</i>"
 
     welcome_status = "Qayta tashrifingizdan xursandmiz." if is_existing else "Xush kelibsiz!"
 
@@ -1465,11 +1470,26 @@ async def start_vote(msg: Message, state: FSMContext):
     if await user_is_blocked(uid):
         return await msg.answer("⛔ <b>Sizning hisobingiz bloklangan.</b>", parse_mode="HTML")
 
-    if not await bot_is_ready():
+    api_key = await get_setting("api_key")
+    project_id = await get_setting("project_id")
+
+    if not api_key:
         if uid == ADMIN_ID:
             return await msg.answer(
                 "⚠️ <b>Ovoz berish uchun avval API kalitni ulang!</b>\n\n"
                 "/admin paneliga kirib <b>💳 API Kalit sotib olish</b> yoki <b>🔑 API Kalitni sozlash</b> tugmasini bosing.",
+                parse_mode="HTML"
+            )
+        return await msg.answer(
+            "🔧 <b>Ovoz berish tizimi sozlanmoqda.</b>\n\nTez orada ovoz berish ochiladi, kuting! ⏳",
+            parse_mode="HTML"
+        )
+
+    if not project_id:
+        if uid == ADMIN_ID:
+            return await msg.answer(
+                "⚠️ <b>Loyiha ID raqami sozlanmagan!</b>\n\n"
+                "/admin paneliga kirib <b>📌 Loyiha IDni sozlash</b> tugmasini bosing.",
                 parse_mode="HTML"
             )
         return await msg.answer(
