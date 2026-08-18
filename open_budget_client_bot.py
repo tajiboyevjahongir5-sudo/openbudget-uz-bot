@@ -752,7 +752,6 @@ async def poll_purchase_status(purchase_id: int, chat_id: int):
                     f"<code>{api_key}</code>\n\n"
                     f"✅ <b>Ushbu kalit botingizga AVTOMATIK TARZDA ulandi va faollashtirildi!</b>\n"
                     f"Endi botingiz ovozlarni to'liq qabul qilishga tayyor! 🚀",
-                    reply_markup=await kb_admin(),
                     parse_mode="HTML"
                 )
                 break
