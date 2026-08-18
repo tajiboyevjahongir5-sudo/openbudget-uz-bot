@@ -945,21 +945,33 @@ async def process_project_id(msg: Message, state: FSMContext):
 
     if status == 200 and "initiative" in res:
         initiative   = res["initiative"]
-        name         = (
-            initiative.get("name")
-            or initiative.get("title")
-            or initiative.get("projectName")
-            or text
-        )
+        category     = initiative.get("categoryName") or "Loyiha"
+        region       = initiative.get("regionName") or ""
+        district     = initiative.get("districtName") or ""
+        quarter      = initiative.get("quarterName") or ""
+        vote_cnt     = initiative.get("voteCount") or 0
+        desc         = initiative.get("description") or ""
+
+        # Loyiha nomini hudud bilan chiroyli shakllantiramiz
+        loc = district or region
+        name = f"{category} ({loc})" if loc else category
+
         await set_setting("project_id",   text)
         await set_setting("project_name", str(name))
         await state.clear()
-        await checking.edit_text(
-            f"✅ <b>Loyiha topildi va saqlandi!</b>\n\n"
-            f"📌 Nomi: <b>{name}</b>\n"
-            f"🆔 ID:    <code>{text}</code>",
-            parse_mode="HTML"
+
+        details_text = (
+            "✅ <b>Loyiha topildi va saqlandi!</b>\n\n"
+            f"📅 <b>Mavsum:</b> {html.escape(str(initiative.get('boardTitle', 'Tashabbusli Budjet')))}\n"
+            f"🏢 <b>Hudud:</b> {html.escape(str(region))}, {html.escape(str(district))}\n"
+            f"🏡 <b>Mahalla:</b> {html.escape(str(quarter))}\n"
+            f"📂 <b>Kategoriya:</b> {html.escape(str(category))}\n"
+            f"🗳️ <b>Ovozlar soni:</b> {vote_cnt} ta\n"
+            f"📝 <b>Tavsif:</b> {html.escape(str(desc[:300]))}...\n\n"
+            f"🆔 <b>Loyiha ID:</b> <code>{text}</code>"
         )
+
+        await checking.edit_text(details_text, parse_mode="HTML")
         await msg.answer("Admin panel:", reply_markup=kb_main())
 
     elif status == 404:
