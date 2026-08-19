@@ -698,18 +698,14 @@ ADMIN_BUTTON_KEYWORDS = [
     "Yopish"
 ]
 
-@router.message(F.text, F.from_user.id == ADMIN_ID, StateFilter("*"))
+def is_admin_menu_btn(msg: Message) -> bool:
+    if not msg.text:
+        return False
+    return any(k in msg.text for k in ADMIN_BUTTON_KEYWORDS)
+
+@router.message(F.text, F.from_user.id == ADMIN_ID, is_admin_menu_btn, StateFilter("*"))
 async def admin_menu_handler(msg: Message, state: FSMContext):
     text = msg.text.strip()
-    cur_state = await state.get_state()
-    is_admin_btn = any(k in text for k in ADMIN_BUTTON_KEYWORDS)
-    
-    if not is_admin_btn:
-        if cur_state is not None:
-            return  # Let specific state handler process input
-        return
-
-    # Admin tugmasi bosilganda avvalgi holatni tozalaymiz
     await state.clear()
     
     if "API Balansini to'ldirish" in text:
@@ -1914,7 +1910,10 @@ async def adm_reject_wd(cb: CallbackQuery):
 @router.message(F.text.lower().contains("orqaga") | F.text.lower().contains("bekor qilish"), StateFilter("*"))
 async def cmd_cancel(msg: Message, state: FSMContext):
     await state.clear()
-    await msg.answer("Bekor qilindi.", reply_markup=kb_main())
+    if msg.from_user.id == ADMIN_ID:
+        await msg.answer("Bekor qilindi.", reply_markup=await kb_admin())
+    else:
+        await msg.answer("Bekor qilindi.", reply_markup=kb_main())
 
 # ──────────────────────────────────────────────
 #  💎 MENING HISOBIM
