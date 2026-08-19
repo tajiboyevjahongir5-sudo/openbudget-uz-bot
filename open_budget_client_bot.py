@@ -483,11 +483,15 @@ async def kb_admin() -> ReplyKeyboardMarkup:
     voting_on     = await get_setting("voting_enabled") == "1"
     toggle_text   = "🟢 Ovoz berish: YOQIQ" if voting_on else "🔴 Ovoz berish: O'CHIQ"
     toggle_style  = "success" if voting_on else "danger"
+    has_key       = bool(await get_setting("api_key"))
+
+    key_btn1 = "💳 API Balansini to'ldirish ⚡" if has_key else "💳 API Kalit sotib olish ✨"
+    key_btn2 = "🔑 API Kalit sozlamalari 🛠️" if has_key else "🔑 API Kalitni ulash 🛠️"
 
     return ReplyKeyboardMarkup(keyboard=[
         [
-            KeyboardButton(text="💳 API Kalit sotib olish ✨", style="success"),
-            KeyboardButton(text="🔑 API Kalitni ulash / sozlash 🛠️", style="primary"),
+            KeyboardButton(text=key_btn1, style="success"),
+            KeyboardButton(text=key_btn2, style="primary"),
         ],
         [
             KeyboardButton(text="📌 Loyiha IDni sozlash 🎯", style="primary"),
@@ -679,7 +683,59 @@ async def cmd_admin(msg: Message, state: FSMContext):
 async def admin_menu_handler(msg: Message, state: FSMContext):
     text = msg.text.strip()
     
-    if "API Kalit sotib olish" in text:
+    if "API Balansini to'ldirish" in text:
+        api_key = await get_setting("api_key")
+        if api_key:
+            display_key = f"{api_key[:11]}...{api_key[-4:]}" if len(api_key) > 15 else api_key
+            res_k, status_k = await call_api("/key-info", "GET")
+            rem = res_k.get("votes_remaining", 0) if status_k == 200 else 0
+            
+            await state.set_state(AdminStates.TOPUP_VOTES)
+            await msg.answer(
+                f"⚡ <b>API Kalit balansini to'ldirish</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"🔑 <b>Mavjud kalit:</b> <code>{display_key}</code>\n"
+                f"📊 <b>Joriy qolgan ovozlar:</b> <b>{rem:,} ta ovoz</b>\n\n"
+                f"✍️ <b>Nechta ovoz qo'shmoqchisiz?</b>\n"
+                f"• Masalan: <code>50</code>, <code>100</code>, <code>250</code>, <code>500</code>\n"
+                f"• Narx: 1 ta ovoz = <b>1,000 UZS</b>\n\n"
+                f"<i>Qo'shiladigan ovozlar sonini yozib yuboring (kamida 10 ta):</i>",
+                reply_markup=kb_cancel(),
+                parse_mode="HTML"
+            )
+        else:
+            loading = await msg.answer("🔄 <b>Tariflar serverdan yuklanmoqda...</b>", parse_mode="HTML")
+            res, status = await call_api("/tariffs", "GET")
+            await loading.delete()
+            
+            if status != 200 or "tariffs" not in res:
+                return await msg.answer(
+                    "❌ Tariflar ro'yxatini yuklab bo'lmadi. Keyinroq urinib ko'ring.",
+                    parse_mode="HTML"
+                )
+                
+            tariffs = res.get("tariffs", [])
+            buttons = [
+                [InlineKeyboardButton(text="✍️ Boshqa miqdor (O'zim kiritaman)", callback_data="adm_custom_tariff", style="success")]
+            ]
+            for t in tariffs:
+                buttons.append([
+                    InlineKeyboardButton(
+                        text=f"📦 {t['votes']} ta Ovoz — {t['price']:,} UZS",
+                        callback_data=f"adm_tariff_{t['votes']}",
+                        style="primary"
+                    )
+                ])
+            buttons.append([InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back", style="danger")])
+            await msg.answer(
+                "💳 <b>API Kalit sotib olish</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "Botingiz uchun kerakli ovoz limitiga mos tarifni tanlang yoki o'zingiz xohlagan miqdorni kiriting:",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+                parse_mode="HTML"
+            )
+
+    elif "API Kalit sotib olish" in text:
         loading = await msg.answer("🔄 <b>Tariflar serverdan yuklanmoqda...</b>", parse_mode="HTML")
         res, status = await call_api("/tariffs", "GET")
         await loading.delete()
@@ -717,7 +773,7 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
             parse_mode="HTML"
         )
 
-    elif "API Kalitni ulash" in text:
+    elif "API Kalit" in text:
         api_key = await get_setting("api_key")
         if api_key:
             text_card, kb_card = await get_api_key_info_card(api_key)
