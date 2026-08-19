@@ -1,0 +1,41 @@
+﻿# Open Budget Uzbekistan 2026 Telegram Bot
+
+> Open Budget Uzbekistan (Ochiq Budjet - openbudget.uz) uchun tayyor, ochiq manbali va AI integratsiyalashgan Telegram bot shabloni.
+
+## Loyiha Haqida
+
+Ushbu repozitoriya O'zbekiston Open Budget (Tashabbusli Budjet) portali bilan ishlovchi Telegram bot kodini o'z ichiga oladi. Bot fuqarolarga mahalliy tashabbus loyihalariga tezkor ovoz berish, AI yordamida captchalarni avtomatik yechish va foydalanuvchilarga ovozlari uchun UZS mukofot to'lash imkonini beradi.
+
+- **Repository**: https://github.com/tajiboyevjahongir5-sudo/openbudget-uz-bot
+- **Demo Bot**: https://t.me/Budjetuz2026_bot (@Budjetuz2026_bot)
+- **API Gateway & Kalitlar**: https://t.me/Budjetuz2026_Bot (@Budjetuz2026_Bot)
+- **Dev.to Maqolasi**: https://dev.to/jahongir_tajiboyev_b806d0/how-i-built-an-open-budget-uzbekistan-telegram-bot-with-ai-captcha-solving-4l3m
+- **Dasturlash tili va Texnologiyalar**: Python 3.10+, Aiogram 3.x, aiosqlite (WAL mode), aiohttp, Google Gemini AI (Vision).
+
+## Asosiy Hujjatlar
+
+- [README.md](README.md): Loyiha haqida umumiy ma'lumot, asosiy imkoniyatlar va tezkor ishga tushirish.
+- [INSTALL.md](INSTALL.md): Botni lokal kompyuterda, Railway.app bulutli platformasida yoki Linux VPS serverida 24/7 rejimda o'rnatish yo'riqnomasi.
+- [API.md](API.md): Tijorat API endpointlari, tariflar, loyihalar va ovoz berish bo'yicha to'liq texnik spetsifikatsiya.
+- [.env.example](.env.example): Bot ishlashi uchun zarur bo'lgan konfiguratsiya o'zgaruvchilari namunasi.
+- [QOLLANMA.txt](QOLLANMA.txt): O'zbek tilida bosqichma-bosqich o'rnatish va sozlash yo'riqnomasi.
+- [LICENSE](LICENSE): MIT ochiq manba litsenziyasi.
+
+## Asosiy Imkoniyatlar va Arxitektura
+
+1. **Avtomatik Captcha Yechish (AI Vision)**:
+   - Google Gemini AI (gemini-1.5-flash) modeli orqali Open Budget rasmli captchalarini avtomatik yechadi.
+2. **Mukofot va Balans Tizimi**:
+   - Har bir tasdiqlangan ovoz uchun foydalanuvchiga UZS mukofot hisoblanadi.
+   - Uzcard va Humo bank kartalariga pul yechib olish so'rovlarini boshqarish.
+3. **To'liq Admin Panel (/admin)**:
+   - Bot ichidan to'g'ridan-to'g'ri API kalit sotib olish va avtomatik ulash.
+   - Loyiha ID sini sozlash va faqat bitta maqsadli loyihaga ovoz yig'ish.
+   - Ovoz uchun to'lanadigan narx va minimal yechish miqdorini dinamik o'zgartirish.
+   - Barcha foydalanuvchilarga xabar tarqatish (Broadcast) va TXT hisobot yuklab olish.
+4. **Persistent Ma'lumotlar Bazasi**:
+   - iosqlite + WAL rejimida ishlaydi. Railway Volume bilan ma'lumotlar o'chib ketmaydi.
+
+## Qidiruv Kalit So'zlari (Search Keywords)
+
+Open Budget bot, Open Budget Uzbekistan, Open Budget 2026, Ochiq Budjet bot, Ochiq Budjet Telegram bot, O'zbekiston Open Budget, Open Budget API bot, Tashabbusli Budjet bot, openbudget.uz bot, Telegram bot source code Uzbekistan, openbudget-uz-bot.
