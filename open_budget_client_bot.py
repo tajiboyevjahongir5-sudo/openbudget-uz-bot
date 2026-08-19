@@ -683,7 +683,10 @@ async def cmd_admin(msg: Message, state: FSMContext):
 ADMIN_BUTTON_KEYWORDS = [
     "API Balansini to'ldirish",
     "API Kalit sotib olish",
+    "API Kalit sozlamalari",
+    "API Kalitni ulash",
     "API Kalit",
+    "Kalit sozlamalari",
     "Loyiha ID",
     "Mukofot",
     "Min. yechish",
@@ -799,11 +802,30 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
             parse_mode="HTML"
         )
 
-    elif "API Kalit" in text:
+    elif "API Kalit" in text or "Kalit sozlamalari" in text:
         api_key = await get_setting("api_key")
         if api_key:
-            text_card, kb_card = await get_api_key_info_card(api_key)
-            await msg.answer(text_card, reply_markup=kb_card, parse_mode="HTML")
+            try:
+                text_card, kb_card = await get_api_key_info_card(api_key)
+                await msg.answer(text_card, reply_markup=kb_card, parse_mode="HTML")
+            except Exception as e:
+                logger.error(f"API kalit kartasini chiqarishda xato: {e}")
+                display_key = f"{api_key[:11]}...{api_key[-4:]}" if len(api_key) > 15 else api_key
+                buttons = [
+                    [InlineKeyboardButton(text="➕ Ovoz sotib olish (Balansni to'ldirish)", callback_data="adm_topup_key", style="success")],
+                    [InlineKeyboardButton(text="✏️ Boshqa kalit ulash", callback_data="adm_input_new_key", style="primary")],
+                    [InlineKeyboardButton(text="🗑️ Kalitni uzish / o'chirish", callback_data="adm_delete_key", style="danger")],
+                    [InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close_prompt", style="secondary")]
+                ]
+                await msg.answer(
+                    f"🔑 <b>API Kalit Ma'lumotlari:</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"🔑 <b>Kalit:</b> <code>{display_key}</code>\n"
+                    f"⚡ <b>Holati:</b> 🚫 <b>Ega tomonidan o'chirilgan (@jahongir_1220)</b>\n\n"
+                    f"<i>Quyidagi tugmalar orqali boshqaring:</i>",
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+                    parse_mode="HTML"
+                )
         else:
             await state.set_state(AdminStates.SET_API_KEY)
             await msg.answer(
