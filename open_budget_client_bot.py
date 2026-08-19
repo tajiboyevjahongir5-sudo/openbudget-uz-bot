@@ -386,6 +386,7 @@ class AdminStates(StatesGroup):
     SET_REWARD    = State()
     SET_MIN_WD    = State()
     BROADCAST     = State()
+    CUSTOM_TARIFF = State()
 
 class WithdrawStates(StatesGroup):
     CARD   = State()
@@ -692,22 +693,25 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
         if not tariffs:
             return await msg.answer("Hozircha faol tariflar mavjud emas.", parse_mode="HTML")
             
-        buttons = []
+        buttons = [
+            [InlineKeyboardButton(text="✍️ Boshqa miqdor (O'zim kiritaman)", callback_data="adm_custom_tariff", style="success")]
+        ]
         for t in tariffs:
             buttons.append([
                 InlineKeyboardButton(
                     text=f"📦 {t['votes']} ta Ovoz — {t['price']:,} UZS",
-                    callback_data=f"adm_tariff_{t['votes']}"
+                    callback_data=f"adm_tariff_{t['votes']}",
+                    style="primary"
                 )
             ])
-        buttons.append([InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back")])
+        buttons.append([InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back", style="danger")])
         await msg.answer(
             "💳 <b>API Kalit sotib olish</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
             "🔑 <b>API Kalit nima?</b>\n"
             "Bu botingiz asosiy serverga ulanib, <b>captchalarni sun'iy intellekt (AI) yordamida avtomatik yechishi</b> va barqaror ishlashi uchun kerakli balans (yoqilg'i) hisoblanadi.\n\n"
             "⚠️ <b>Muhim eslatma:</b> Ushbu tariflar odamlar yig'gan ovozi uchun to'lanadigan mukofot puli emas! Bu botingiz serverga ulanib ishlashi uchun ketadigan sarf-xarajat to'lovidir.\n\n"
-            "Botingiz uchun kerakli ovoz limitiga mos tarifni tanlang. To'lov qilingach, server uni avtomatik aniqlab, kalitni ulab beradi!",
+            "Botingiz uchun kerakli ovoz limitiga mos tarifni tanlang yoki o'zingiz xohlagan miqdorni kiriting:",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
             parse_mode="HTML"
         )
@@ -908,15 +912,18 @@ async def adm_buy_api(cb: CallbackQuery):
     if not tariffs:
         return await cb.message.answer("Hozircha faol tariflar mavjud emas.", parse_mode="HTML")
         
-    buttons = []
+    buttons = [
+        [InlineKeyboardButton(text="✍️ Boshqa miqdor (O'zim kiritaman)", callback_data="adm_custom_tariff", style="success")]
+    ]
     for t in tariffs:
         buttons.append([
             InlineKeyboardButton(
                 text=f"📦 {t['votes']} ta Ovoz — {t['price']:,} UZS",
-                callback_data=f"adm_tariff_{t['votes']}"
+                callback_data=f"adm_tariff_{t['votes']}",
+                style="primary"
             )
         ])
-    buttons.append([InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back")])
+    buttons.append([InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back", style="danger")])
     
     await cb.message.answer(
         "💳 <b>API Kalit sotib olish</b>\n"
@@ -924,11 +931,63 @@ async def adm_buy_api(cb: CallbackQuery):
         "🔑 <b>API Kalit nima?</b>\n"
         "Bu botingiz asosiy serverga ulanib, <b>captchalarni sun'iy intellekt (AI) yordamida avtomatik yechishi</b> va barqaror ishlashi uchun kerakli balans (yoqilg'i) hisoblanadi.\n\n"
         "⚠️ <b>Muhim eslatma:</b> Ushbu tariflar odamlar yig'gan ovozi uchun to'lanadigan mukofot puli emas! Bu botingiz serverga ulanib ishlashi uchun ketadigan sarf-xarajat to'lovidir.\n\n"
-        "Botingiz uchun kerakli ovoz limitiga mos tarifni tanlang. To'lov qilingach, server uni avtomatik aniqlab, kalitni ulab beradi!",
+        "Botingiz uchun kerakli ovoz limitiga mos tarifni tanlang yoki o'zingiz xohlagan miqdorni kiriting:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
         parse_mode="HTML"
     )
     await cb.answer()
+
+@router.callback_query(F.data == "adm_custom_tariff")
+async def adm_custom_tariff_cb(cb: CallbackQuery, state: FSMContext):
+    if cb.from_user.id != ADMIN_ID:
+        return await cb.answer()
+    await state.set_state(AdminStates.CUSTOM_TARIFF)
+    await cb.message.delete()
+    await cb.message.answer(
+        "✍️ <b>Kerakli ovoz miqdorini kiriting:</b>\n\n"
+        "• Masalan: <code>250</code> yoki <code>750</code>\n"
+        "• Narx: 1 ta ovoz = <b>1,000 UZS</b>\n\n"
+        "<i>Bekor qilish uchun pastdagi ❌ Bekor qilish tugmasini bosing:</i>",
+        reply_markup=kb_cancel(),
+        parse_mode="HTML"
+    )
+    await cb.answer()
+
+@router.message(AdminStates.CUSTOM_TARIFF, F.text)
+async def process_custom_tariff(msg: Message, state: FSMContext):
+    text = msg.text.strip()
+    if text == "❌ Bekor qilish":
+        await state.clear()
+        await msg.answer("Bekor qilindi.")
+        await msg.answer(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
+        return
+        
+    if not text.isdigit() or int(text) < 10:
+        return await msg.answer(
+            "❌ Iltimos, musbat butun son kiriting (kamida 10 ta ovoz):",
+            parse_mode="HTML"
+        )
+        
+    votes = int(text)
+    unit_price = 1000
+    price = votes * unit_price
+    await state.clear()
+    
+    buttons = [
+        [InlineKeyboardButton(text=f"✅ {price:,} UZS — To'lov qilish", callback_data=f"adm_tariff_{votes}", style="success")],
+        [InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="adm_buy_api", style="danger")]
+    ]
+    
+    await msg.answer(
+        f"📦 <b>Buyurtma ma'lumotlari:</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"🗳️ <b>Ovozlar soni:</b> {votes:,} ta\n"
+        f"💵 <b>Hisoblangan summa:</b> <b>{price:,} UZS</b>\n"
+        f"📊 <i>(1 ta ovoz = {unit_price:,} UZS)</i>\n\n"
+        f"To'lov fakturasi va karta raqamini olish uchun <b>«To'lov qilish»</b> tugmasini bosing:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+        parse_mode="HTML"
+    )
 
 async def poll_purchase_status(purchase_id: int, chat_id: int):
     """
@@ -990,9 +1049,9 @@ async def adm_select_tariff(cb: CallbackQuery):
     asyncio.create_task(poll_purchase_status(purchase_id, cb.from_user.id))
     
     kb_invoice = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔄 To'ladim (Tekshirish)", callback_data=f"adm_paid_{purchase_id}")],
-        [InlineKeyboardButton(text="❌ Bekor qilish", callback_data=f"adm_cancel_inv_{purchase_id}")],
-        [InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back")]
+        [InlineKeyboardButton(text="🔄 To'ladim (Tekshirish)", callback_data=f"adm_paid_{purchase_id}", style="success")],
+        [InlineKeyboardButton(text="❌ Bekor qilish", callback_data=f"adm_cancel_inv_{purchase_id}", style="danger")],
+        [InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back", style="secondary")]
     ])
     
     await cb.message.answer(
@@ -1034,7 +1093,6 @@ async def adm_paid_invoice(cb: CallbackQuery):
             f"<code>{api_key}</code>\n\n"
             f"✅ <b>Ushbu API kalit botingizga AVTOMATIK TARZDA ulandi va faollashtirildi!</b>\n"
             f"Endi botingizdan to'liq foydalanishingiz mumkin! 🚀",
-            reply_markup=await kb_admin(),
             parse_mode="HTML"
         )
     elif status == 200 and res.get("status") == "PENDING":
