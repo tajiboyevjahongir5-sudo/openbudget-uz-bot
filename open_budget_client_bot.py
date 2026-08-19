@@ -835,7 +835,7 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
                 reply_markup=kb_cancel(), parse_mode="HTML"
             )
 
-    elif "Loyiha IDni sozlash" in text:
+    elif "Loyiha ID" in text:
         api_key = await get_setting("api_key")
         if not api_key:
             return await msg.answer("⚠️ Avval API kalitni ulashingiz shart!")
@@ -844,21 +844,30 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
         cur_name = await get_setting("project_name")
         
         if cur_id:
+            safe_cur_id = html.escape(str(cur_id))
+            safe_cur_name = html.escape(str(cur_name or cur_id))
             buttons = [
                 [InlineKeyboardButton(text="✏️ Yangi ID kiritish (Almashtirish)", callback_data="adm_change_project", style="primary")],
                 [InlineKeyboardButton(text="🗑️ Faol Loyihani o'chirish", callback_data="adm_delete_project", style="danger")],
                 [InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close_prompt", style="secondary")]
             ]
-            await msg.answer(
-                f"📌 <b>Loyiha Sozlamalari</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"🔹 <b>Hozirgi faol loyiha:</b>\n"
-                f"🆔 <b>ID:</b> <code>{cur_id}</code>\n"
-                f"📋 <b>Nomi:</b> <b>{cur_name or cur_id}</b>\n\n"
-                f"ℹ️ <i>Eslatma: Botda faqat 1 ta loyiha faol bo'la oladi. Yangi ID kiritilsa, avvalgisi avtomatik almashadi.</i>",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
-                parse_mode="HTML"
-            )
+            try:
+                await msg.answer(
+                    f"📌 <b>Loyiha Sozlamalari</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"🔹 <b>Hozirgi faol loyiha:</b>\n"
+                    f"🆔 <b>ID:</b> <code>{safe_cur_id}</code>\n"
+                    f"📋 <b>Nomi:</b> <b>{safe_cur_name}</b>\n\n"
+                    f"ℹ️ <i>Eslatma: Botda faqat 1 ta loyiha faol bo'la oladi. Yangi ID kiritilsa, avvalgisi avtomatik almashadi.</i>",
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.error(f"Loyiha xabarini yuborishda xato: {e}")
+                await msg.answer(
+                    f"📌 Loyiha ID: {cur_id}\nLoyiha nomi: {cur_name or cur_id}",
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
+                )
         else:
             await state.set_state(AdminStates.SET_PROJECT)
             await msg.answer(
