@@ -565,13 +565,27 @@ async def admin_panel_text() -> str:
         f"<code>{api_key[:11]}...{api_key[-4:]}</code>"
         if len(api_key) > 15 else (f"<code>{api_key}</code>" if api_key else "❌ Kiritilmagan")
     )
+    
+    votes_info = ""
+    if api_key:
+        try:
+            res_k, status_k = await call_api("/key-info", "GET")
+            if status_k == 200 and "votes_remaining" in res_k:
+                rem = res_k["votes_remaining"]
+                bal = res_k.get("balance_uzs", 0)
+                votes_info = f"\n⚡ <b>Ovoz limiti:</b>   <b>{rem:,} ta ovoz</b> qoldi (Balans: {bal:,} UZS)"
+            elif status_k == 401:
+                votes_info = "\n⚠️ <b>Kalit holati:</b>   ❌ Yaroqsiz yoki topilmadi"
+        except Exception:
+            pass
+
     proj_display = project_name or project_id or "❌ Kiritilmagan"
     vote_status  = "🟢 Yoqiq" if voting_on else "🔴 O'chirilgan"
 
     return (
         "⚙️ <b>Admin Boshqaruv Paneli</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"🔑 <b>API Kalit:</b>    {api_display}\n"
+        f"🔑 <b>API Kalit:</b>    {api_display}{votes_info}\n"
         f"📌 <b>Loyiha:</b>       <b>{proj_display}</b>\n"
         f"💰 <b>Mukofot:</b>      <b>{reward:,} UZS</b> / ovoz\n"
         f"💳 <b>Min. yechish:</b> <b>{min_wd:,} UZS</b>\n"
@@ -711,14 +725,32 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
         if not api_key:
             return await msg.answer("⚠️ Avval API kalitni ulashingiz shart!")
             
-        current = await get_setting("project_name") or await get_setting("project_id") or "—"
-        await state.set_state(AdminStates.SET_PROJECT)
-        await msg.answer(
-            f"📌 <b>Loyiha IDni yuboring:</b>\n\n"
-            f"Hozirgi: <b>{current}</b>\n\n"
-            f"<i>Raqamli ID yoki UUID (masalan: 32541)</i>",
-            reply_markup=kb_cancel(), parse_mode="HTML"
-        )
+        cur_id = await get_setting("project_id")
+        cur_name = await get_setting("project_name")
+        
+        if cur_id:
+            buttons = [
+                [InlineKeyboardButton(text="✏️ Yangi ID kiritish (Almashtirish)", callback_data="adm_change_project", style="primary")],
+                [InlineKeyboardButton(text="🗑️ Faol Loyihani o'chirish", callback_data="adm_delete_project", style="danger")],
+                [InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close_prompt", style="secondary")]
+            ]
+            await msg.answer(
+                f"📌 <b>Loyiha Sozlamalari</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"🔹 <b>Hozirgi faol loyiha:</b>\n"
+                f"🆔 <b>ID:</b> <code>{cur_id}</code>\n"
+                f"📋 <b>Nomi:</b> <b>{cur_name or cur_id}</b>\n\n"
+                f"ℹ️ <i>Eslatma: Botda faqat 1 ta loyiha faol bo'la oladi. Yangi ID kiritilsa, avvalgisi avtomatik almashadi.</i>",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+                parse_mode="HTML"
+            )
+        else:
+            await state.set_state(AdminStates.SET_PROJECT)
+            await msg.answer(
+                "📌 <b>Loyiha ID raqamini yuboring:</b>\n\n"
+                "<i>(Masalan: 32541 yoki to'liq havola/UUID)</i>",
+                reply_markup=kb_cancel(), parse_mode="HTML"
+            )
 
     elif "Mukofot" in text:
         current = int(await get_setting("voter_reward") or 1000)
@@ -1088,14 +1120,68 @@ async def adm_set_project(cb: CallbackQuery, state: FSMContext):
     if not api_key:
         return await cb.answer("⚠️ Avval API kalitni ulashingiz shart!", show_alert=True)
 
-    current = await get_setting("project_name") or await get_setting("project_id") or "—"
+    cur_id = await get_setting("project_id")
+    cur_name = await get_setting("project_name")
+    
+    if cur_id:
+        buttons = [
+            [InlineKeyboardButton(text="✏️ Yangi ID kiritish (Almashtirish)", callback_data="adm_change_project", style="primary")],
+            [InlineKeyboardButton(text="🗑️ Faol Loyihani o'chirish", callback_data="adm_delete_project", style="danger")],
+            [InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close_prompt", style="secondary")]
+        ]
+        await cb.message.answer(
+            f"📌 <b>Loyiha Sozlamalari</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🔹 <b>Hozirgi faol loyiha:</b>\n"
+            f"🆔 <b>ID:</b> <code>{cur_id}</code>\n"
+            f"📋 <b>Nomi:</b> <b>{cur_name or cur_id}</b>\n\n"
+            f"ℹ️ <i>Eslatma: Botda faqat 1 ta loyiha faol bo'la oladi. Yangi ID kiritilsa, avvalgisi avtomatik almashadi.</i>",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+            parse_mode="HTML"
+        )
+    else:
+        await state.set_state(AdminStates.SET_PROJECT)
+        await cb.message.answer(
+            "📌 <b>Yangi Loyiha ID raqamini yuboring:</b>\n\n"
+            "<i>(Masalan: 32541 yoki havola/UUID)</i>",
+            reply_markup=kb_cancel(), parse_mode="HTML"
+        )
+    await cb.answer()
+
+@router.callback_query(F.data == "adm_change_project")
+async def adm_change_project_cb(cb: CallbackQuery, state: FSMContext):
+    if cb.from_user.id != ADMIN_ID:
+        return await cb.answer()
     await state.set_state(AdminStates.SET_PROJECT)
+    await cb.message.delete()
     await cb.message.answer(
-        f"📌 <b>Loyiha IDni yuboring:</b>\n\n"
-        f"Hozirgi: <b>{current}</b>\n\n"
-        f"<i>Raqamli ID yoki UUID (masalan: 32541)</i>",
+        "📌 <b>Yangi Loyiha ID raqamini yuboring:</b>\n\n"
+        "<i>(Masalan: 32541 yoki to'liq havola/UUID)</i>",
         reply_markup=kb_cancel(), parse_mode="HTML"
     )
+    await cb.answer()
+
+@router.callback_query(F.data == "adm_delete_project")
+async def adm_delete_project_cb(cb: CallbackQuery, state: FSMContext):
+    if cb.from_user.id != ADMIN_ID:
+        return await cb.answer()
+    await set_setting("project_id", "")
+    await set_setting("project_name", "")
+    await cb.message.delete()
+    await cb.message.answer(
+        "🗑️ <b>Faol loyiha ID o'chirildi!</b>\n\n"
+        "Endi botda biriktirilgan loyiha mavjud emas. Yangi loyiha qo'shilmaguncha ovoz berish to'xtatiladi.",
+        parse_mode="HTML"
+    )
+    await cb.message.answer(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
+    await cb.answer("Loyiha o'chirildi!")
+
+@router.callback_query(F.data == "adm_close_prompt")
+async def adm_close_prompt_cb(cb: CallbackQuery):
+    try:
+        await cb.message.delete()
+    except Exception:
+        pass
     await cb.answer()
 
 @router.message(AdminStates.SET_PROJECT, F.text)
@@ -1103,7 +1189,9 @@ async def process_project_id(msg: Message, state: FSMContext):
     text = msg.text.strip()
     if text == "❌ Bekor qilish":
         await state.clear()
-        return await msg.answer("Bekor qilindi.", reply_markup=kb_main())
+        await msg.answer("Bekor qilindi.")
+        await msg.answer(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
+        return
 
     checking = await msg.answer(
         f"🔄 <b>Loyiha <code>{text}</code> tekshirilmoqda...</b>", parse_mode="HTML"
@@ -1135,7 +1223,7 @@ async def process_project_id(msg: Message, state: FSMContext):
         await state.clear()
 
         details_text = (
-            "✅ <b>Loyiha topildi va saqlandi!</b>\n\n"
+            "✅ <b>Yangi faol loyiha saqlandi!</b>\n\n"
             f"📅 <b>Mavsum:</b> {html.escape(str(initiative.get('boardTitle', 'Tashabbusli Budjet')))}\n"
             f"🏢 <b>Hudud:</b> {html.escape(str(region))}, {html.escape(str(district))}\n"
             f"🏡 <b>Mahalla:</b> {html.escape(str(quarter))}\n"
@@ -1146,7 +1234,7 @@ async def process_project_id(msg: Message, state: FSMContext):
         )
 
         await checking.edit_text(details_text, parse_mode="HTML")
-        await msg.answer("Admin panel:", reply_markup=kb_main())
+        await msg.answer(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
 
     elif status == 404:
         await checking.edit_text(
@@ -1164,7 +1252,7 @@ async def process_project_id(msg: Message, state: FSMContext):
             f"🆔 ID: <code>{text}</code>",
             parse_mode="HTML"
         )
-        await msg.answer("Admin panel:", reply_markup=kb_main())
+        await msg.answer(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
 
 # ──────────────────────────────────────────────
 #  MUKOFOT MIQDORI
