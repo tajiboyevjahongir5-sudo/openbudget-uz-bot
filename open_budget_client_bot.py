@@ -2373,31 +2373,21 @@ async def reg_district(cb: CallbackQuery, state: FSMContext):
         sending = await cb.message.answer("🤖 <b>Captcha avtomatik yechildi. Ro'yxatdan o'tish ma'lumotlari yuborilmoqda...</b>", parse_mode="HTML")
         data = await state.get_data()
         
-        payload = {
+        backend_payload = {
+            "first_name": data["fullname"],
+            "last_name": "",
+            "phone_number": data["phone"],
+            "gender": "MALE" if data["gender"] == "M" else "FEMALE",
+            "birth_date": data["birth_date"],
+            "region_id": int(data["region_id"]),
+            "district_id": int(data["district_id"]),
+            "project_id": await get_setting("project_id"),
             "captcha_key": captcha["key"],
             "captcha_result": int(solved_result),
-            "phone_number": data["phone"],
-            "district_id": data["district_id"],
-            "fullname": data["fullname"],
-            "gender": data["gender"],
-            "birth_date": data["birth_date"],
-            "profession": "Xodim",
-            "region_id": data["region_id"]
-        }
-        
-        import aiohttp
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "Referer": "https://openbudget.uz/",
-            "Origin": "https://openbudget.uz"
+            "profession": "Xodim"
         }
         try:
-            session = await get_http_session()
-            async with session.post("https://openbudget.uz/v1/register/send-otp", json=payload, headers=headers) as resp:
-                res_reg = await resp.json()
-                status_reg = resp.status
+            res_reg, status_reg = await call_api("/register/send-otp", "POST", json_data=backend_payload)
         except Exception as e:
             await state.clear()
             await sending.delete()
@@ -2405,7 +2395,7 @@ async def reg_district(cb: CallbackQuery, state: FSMContext):
             return await cb.message.answer(f"❌ Server xatosi: {e}", reply_markup=kb_main())
 
         if status_reg != 200:
-            err = res_reg.get("message", "Xatolik yuz berdi.")
+            err = res_reg.get("detail", "Xatolik yuz berdi.")
             await state.clear()
             await sending.delete()
             await cb.answer()
@@ -2448,38 +2438,28 @@ async def reg_captcha(msg: Message, state: FSMContext):
     data = await state.get_data()
     sending = await msg.answer("🔄 <b>Ro'yxatdan o'tish ma'lumotlari yuborilmoqda...</b>", parse_mode="HTML")
     
-    payload = {
+    backend_payload = {
+        "first_name": data["fullname"],
+        "last_name": "",
+        "phone_number": data["phone"],
+        "gender": "MALE" if data["gender"] == "M" else "FEMALE",
+        "birth_date": data["birth_date"],
+        "region_id": int(data["region_id"]),
+        "district_id": int(data["district_id"]),
+        "project_id": await get_setting("project_id"),
         "captcha_key": data["reg_captcha_key"],
         "captcha_result": int(msg.text),
-        "phone_number": data["phone"],
-        "district_id": data["district_id"],
-        "fullname": data["fullname"],
-        "gender": data["gender"],
-        "birth_date": data["birth_date"],
-        "profession": "Xodim",
-        "region_id": data["region_id"]
-    }
-    
-    import aiohttp
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Referer": "https://openbudget.uz/",
-        "Origin": "https://openbudget.uz"
+        "profession": "Xodim"
     }
     try:
-        session = await get_http_session()
-        async with session.post("https://openbudget.uz/v1/register/send-otp", json=payload, headers=headers) as resp:
-            res = await resp.json()
-            status = resp.status
+        res, status = await call_api("/register/send-otp", "POST", json_data=backend_payload)
     except Exception as e:
         await state.clear()
         await sending.delete()
         return await msg.answer(f"❌ Server xatosi: {e}", reply_markup=kb_main())
 
     if status != 200:
-        err = res.get("message", "Xatolik yuz berdi.")
+        err = res.get("detail", "Xatolik yuz berdi.")
         await state.clear()
         await sending.delete()
         return await msg.answer(f"❌ {err}", reply_markup=kb_main())
@@ -2504,32 +2484,20 @@ async def reg_sms(msg: Message, state: FSMContext):
     data = await state.get_data()
     checking = await msg.answer("🔄 <b>Kod tekshirilmoqda...</b>", parse_mode="HTML")
     
-    payload = {
+    backend_payload = {
         "phone_number": data["phone"],
         "otp_code": msg.text,
         "otp_key": data.get("reg_otp_key", "")
     }
-    
-    import aiohttp
-    headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Referer": "https://openbudget.uz/",
-        "Origin": "https://openbudget.uz"
-    }
     try:
-        session = await get_http_session()
-        async with session.post("https://openbudget.uz/v1/register/verify-otp", json=payload, headers=headers) as resp:
-            res = await resp.json()
-            status = resp.status
+        res, status = await call_api("/register/verify-otp", "POST", json_data=backend_payload)
     except Exception as e:
         await state.clear()
         await checking.delete()
         return await msg.answer(f"❌ Server xatosi: {e}", reply_markup=kb_main())
 
     if status != 200:
-        err = res.get("message", "SMS kod xato yoki eskirgan.")
+        err = res.get("detail", "SMS kod xato yoki eskirgan.")
         await state.clear()
         await checking.delete()
         return await msg.answer(f"❌ {err}", reply_markup=kb_main())
@@ -2716,8 +2684,11 @@ async def main():
         global _db_conn, _http_session
         if _db_conn:
             await _db_conn.close()
+            _db_conn = None
         if _http_session and not _http_session.closed:
             await _http_session.close()
+            _http_session = None
+        await bot.session.close()
 
 if __name__ == "__main__":
     asyncio.run(main())
