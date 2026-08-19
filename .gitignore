@@ -1,8 +1,31 @@
+# Maxfiy sozlamalar — HECH QACHON GitHub'ga yuklama!
 .env
+*.key
+*.secret
+
+# Ma'lumotlar bazasi fayllari
 *.db
 *.db-wal
 *.db-shm
+
+# Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*.pycache
+
+# Virtual muhit
 venv/
 .venv/
+env/
+.env/
+
+# OS fayllar
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
