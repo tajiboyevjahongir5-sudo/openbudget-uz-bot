@@ -680,11 +680,34 @@ async def cmd_admin(msg: Message, state: FSMContext):
     await state.clear()
     await msg.answer(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
 
-# ─── Admin panel — matnli tugmalar (ReplyKeyboard) ───
+ADMIN_BUTTON_KEYWORDS = [
+    "API Balansini to'ldirish",
+    "API Kalit sotib olish",
+    "API Kalit",
+    "Loyiha ID",
+    "Mukofot",
+    "Min. yechish",
+    "Ovoz berish:",
+    "Yechish so'rovlari",
+    "Foydalanuvchilar ro'yxati",
+    "Hisobot",
+    "Broadcast",
+    "Yopish"
+]
 
-@router.message(StateFilter(None), F.text, F.from_user.id == ADMIN_ID)
+@router.message(F.text, F.from_user.id == ADMIN_ID, StateFilter("*"))
 async def admin_menu_handler(msg: Message, state: FSMContext):
     text = msg.text.strip()
+    cur_state = await state.get_state()
+    is_admin_btn = any(k in text for k in ADMIN_BUTTON_KEYWORDS)
+    
+    if not is_admin_btn:
+        if cur_state is not None:
+            return  # Let specific state handler process input
+        return
+
+    # Admin tugmasi bosilganda avvalgi holatni tozalaymiz
+    await state.clear()
     
     if "API Balansini to'ldirish" in text:
         api_key = await get_setting("api_key")
