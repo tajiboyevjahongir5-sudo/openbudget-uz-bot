@@ -480,30 +480,31 @@ async def kb_admin() -> ReplyKeyboardMarkup:
     wd_badge      = f" ({pending_count})" if pending_count > 0 else ""
     voting_on     = await get_setting("voting_enabled") == "1"
     toggle_text   = "🟢 Ovoz berish: YOQIQ" if voting_on else "🔴 Ovoz berish: O'CHIQ"
+    toggle_style  = "success" if voting_on else "danger"
 
     return ReplyKeyboardMarkup(keyboard=[
         [
-            KeyboardButton(text="💳 API Kalit sotib olish ✨"),
-            KeyboardButton(text="🔑 API Kalitni ulash / sozlash 🛠️"),
+            KeyboardButton(text="💳 API Kalit sotib olish ✨", style="success"),
+            KeyboardButton(text="🔑 API Kalitni ulash / sozlash 🛠️", style="primary"),
         ],
         [
-            KeyboardButton(text="📌 Loyiha IDni sozlash 🎯"),
-            KeyboardButton(text=toggle_text),
+            KeyboardButton(text="📌 Loyiha IDni sozlash 🎯", style="primary"),
+            KeyboardButton(text=toggle_text, style=toggle_style),
         ],
         [
-            KeyboardButton(text="💰 Mukofot"),
-            KeyboardButton(text="💳 Min. yechish"),
+            KeyboardButton(text="💰 Mukofot", style="primary"),
+            KeyboardButton(text="💳 Min. yechish", style="primary"),
         ],
         [
-            KeyboardButton(text=f"💸 Yechish so'rovlari{wd_badge}"),
-            KeyboardButton(text="👥 Foydalanuvchilar ro'yxati"),
+            KeyboardButton(text=f"💸 Yechish so'rovlari{wd_badge}", style="danger" if pending_count > 0 else "primary"),
+            KeyboardButton(text="👥 Foydalanuvchilar ro'yxati", style="primary"),
         ],
         [
-            KeyboardButton(text="📊 Hisobot (TXT fayl)"),
-            KeyboardButton(text="📢 Broadcast (Xabar tarqatish)"),
+            KeyboardButton(text="📊 Hisobot (TXT fayl)", style="primary"),
+            KeyboardButton(text="📢 Broadcast (Xabar tarqatish)", style="primary"),
         ],
         [
-            KeyboardButton(text="✖️ Yopish"),
+            KeyboardButton(text="✖️ Yopish", style="danger"),
         ],
     ], resize_keyboard=True, is_persistent=True)
 
