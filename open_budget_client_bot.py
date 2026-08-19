@@ -428,9 +428,8 @@ async def validate_api_key(key: str) -> tuple[bool, str]:
     """API kalitni serverda real tekshiradi."""
     res, status = await call_api("/boards", "GET", api_key_override=key)
     if   status == 200: return True,  "✅ API kalit muvaffaqiyatli tasdiqlandi!"
-    elif status == 401: return False, "❌ Noto'g'ri API kalit — yaroqsiz yoki mavjud emas."
+    elif status in (401, 403, 404): return False, "🚫 Ushbu API kalit ega tomonidan o'chirilgan (@jahongir_1220)."
     elif status == 402: return False, "⚠️ API kalit balansi yetarli emas! Admin panelidan to'ldiring."
-    elif status == 403: return False, "🚫 API kalit bloklangan."
     elif status == 0:   return False, "🔌 API manzili bilan ulanib bo'lmadi."
     else:               return False, f"❌ Server xatosi (HTTP {status}). Keyinroq urinib ko'ring."
 
@@ -577,11 +576,15 @@ async def admin_panel_text() -> str:
         try:
             res_k, status_k = await call_api("/key-info", "GET")
             if status_k == 200 and "votes_remaining" in res_k:
-                rem = res_k["votes_remaining"]
-                bal = res_k.get("balance_uzs", 0)
-                votes_info = f"\n⚡ <b>Ovoz limiti:</b>   <b>{rem:,} ta ovoz</b> qoldi (Balans: {bal:,} UZS)"
-            elif status_k == 401:
-                votes_info = "\n⚠️ <b>Kalit holati:</b>   ❌ Yaroqsiz yoki topilmadi"
+                is_act = res_k.get("is_active", True)
+                if not is_act:
+                    votes_info = "\n⚠️ <b>Kalit holati:</b>   🚫 Ega tomonidan o'chirilgan (@jahongir_1220)"
+                else:
+                    rem = res_k["votes_remaining"]
+                    bal = res_k.get("balance_uzs", 0)
+                    votes_info = f"\n⚡ <b>Ovoz limiti:</b>   <b>{rem:,} ta ovoz</b> qoldi (Balans: {bal:,} UZS)"
+            elif status_k in (401, 403, 404):
+                votes_info = "\n⚠️ <b>Kalit holati:</b>   🚫 Ega tomonidan o'chirilgan (@jahongir_1220)"
         except Exception:
             pass
 
@@ -1185,6 +1188,8 @@ async def adm_cancel_invoice(cb: CallbackQuery):
 
 async def get_api_key_info_card(api_key: str) -> tuple[str, InlineKeyboardMarkup]:
     res, status = await call_api("/key-info", "GET")
+    display_key = f"{api_key[:11]}...{api_key[-4:]}" if len(api_key) > 15 else api_key
+    
     if status == 200 and "votes_remaining" in res:
         created_at = res.get("created_at", "—")
         rem = res.get("votes_remaining", 0)
@@ -1192,9 +1197,7 @@ async def get_api_key_info_card(api_key: str) -> tuple[str, InlineKeyboardMarkup
         paid = res.get("total_paid_uzs", total_bought * 1000)
         bal = res.get("balance_uzs", 0)
         is_active = res.get("is_active", True)
-        status_txt = "🟢 Faol" if is_active else "🔴 Bloklangan"
-        
-        display_key = f"{api_key[:11]}...{api_key[-4:]}" if len(api_key) > 15 else api_key
+        status_txt = "🟢 Faol" if is_active else "🚫 Ega tomonidan o'chirilgan (@jahongir_1220)"
         
         text = (
             "🔑 <b>API Kalit Ma'lumotlari</b>\n"
@@ -1208,13 +1211,12 @@ async def get_api_key_info_card(api_key: str) -> tuple[str, InlineKeyboardMarkup
             f"<i>Kalit balansini to'ldirish yoki boshqa kalit ulash uchun quyidagi tugmalardan birini tanlang:</i>"
         )
     else:
-        display_key = f"{api_key[:11]}...{api_key[-4:]}" if len(api_key) > 15 else api_key
         text = (
             "🔑 <b>API Kalit Ma'lumotlari</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🔑 <b>Kalit:</b> <code>{display_key}</code>\n"
-            f"⚠️ Serverdan to'liq ma'lumot olib bo'lmadi.\n\n"
-            f"<i>Quyidagi tugmalar orqali sozlang:</i>"
+            f"⚡ <b>Holati:</b> 🚫 <b>Ega tomonidan o'chirilgan (@jahongir_1220)</b>\n\n"
+            f"<i>Ushbu kalit bekor qilingan yoki topilmadi. Yangi kalit sotib olish yoki ulash uchun quyidagi tugmalardan foydalaning:</i>"
         )
         
     buttons = [
