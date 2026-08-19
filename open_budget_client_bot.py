@@ -387,6 +387,7 @@ class AdminStates(StatesGroup):
     SET_MIN_WD    = State()
     BROADCAST     = State()
     CUSTOM_TARIFF = State()
+    TOPUP_VOTES   = State()
 
 class WithdrawStates(StatesGroup):
     CARD   = State()
@@ -717,12 +718,18 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
         )
 
     elif "API Kalitni ulash" in text:
-        await state.set_state(AdminStates.SET_API_KEY)
-        await msg.answer(
-            "🔑 <b>Asosiy botdan sotib olgan API kalitingizni yuboring:</b>\n\n"
-            "• Kiritilgandan so'ng server bilan <b>avtomatik tekshiriladi</b>",
-            reply_markup=kb_cancel(), parse_mode="HTML"
-        )
+        api_key = await get_setting("api_key")
+        if api_key:
+            text_card, kb_card = await get_api_key_info_card(api_key)
+            await msg.answer(text_card, reply_markup=kb_card, parse_mode="HTML")
+        else:
+            await state.set_state(AdminStates.SET_API_KEY)
+            await msg.answer(
+                "🔑 <b>Asosiy botdan sotib olgan API kalitingizni yuboring:</b>\n\n"
+                "• Kalit <code>ob_api_</code> bilan boshlanishi shart\n"
+                "• Kiritilgandan so'ng server bilan <b>avtomatik tekshiriladi</b>",
+                reply_markup=kb_cancel(), parse_mode="HTML"
+            )
 
     elif "Loyiha IDni sozlash" in text:
         api_key = await get_setting("api_key")
@@ -1117,19 +1124,205 @@ async def adm_cancel_invoice(cb: CallbackQuery):
     await cb.answer()
 
 # ──────────────────────────────────────────────
-#  API KALITNI SOZLASH
+#  API KALITNI SOZLASH VA MA'LUMOTLARI
 # ──────────────────────────────────────────────
+
+async def get_api_key_info_card(api_key: str) -> tuple[str, InlineKeyboardMarkup]:
+    res, status = await call_api("/key-info", "GET")
+    if status == 200 and "votes_remaining" in res:
+        created_at = res.get("created_at", "—")
+        rem = res.get("votes_remaining", 0)
+        total_bought = res.get("total_votes_bought", rem)
+        paid = res.get("total_paid_uzs", total_bought * 1000)
+        bal = res.get("balance_uzs", 0)
+        is_active = res.get("is_active", True)
+        status_txt = "🟢 Faol" if is_active else "🔴 Bloklangan"
+        
+        display_key = f"{api_key[:11]}...{api_key[-4:]}" if len(api_key) > 15 else api_key
+        
+        text = (
+            "🔑 <b>API Kalit Ma'lumotlari</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🔑 <b>Kalit:</b> <code>{display_key}</code>\n"
+            f"📅 <b>Faollashtirilgan sana:</b> {created_at}\n"
+            f"💵 <b>To'langan summa:</b> <b>{paid:,} UZS</b> ({total_bought:,} ta ovoz uchun)\n"
+            f"📊 <b>Ovozlar holati:</b> <b>{total_bought:,} / {rem:,} ta qoldi</b>\n"
+            f"💰 <b>Joriy balans:</b> <b>{bal:,} UZS</b>\n"
+            f"⚡ <b>Holati:</b> {status_txt}\n\n"
+            f"<i>Kalit balansini to'ldirish yoki boshqa kalit ulash uchun quyidagi tugmalardan birini tanlang:</i>"
+        )
+    else:
+        display_key = f"{api_key[:11]}...{api_key[-4:]}" if len(api_key) > 15 else api_key
+        text = (
+            "🔑 <b>API Kalit Ma'lumotlari</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🔑 <b>Kalit:</b> <code>{display_key}</code>\n"
+            f"⚠️ Serverdan to'liq ma'lumot olib bo'lmadi.\n\n"
+            f"<i>Quyidagi tugmalar orqali sozlang:</i>"
+        )
+        
+    buttons = [
+        [InlineKeyboardButton(text="➕ Ovoz sotib olish (Balansni to'ldirish)", callback_data="adm_topup_key", style="success")],
+        [InlineKeyboardButton(text="✏️ Boshqa kalit ulash", callback_data="adm_input_new_key", style="primary")],
+        [InlineKeyboardButton(text="🗑️ Kalitni uzish / o'chirish", callback_data="adm_delete_key", style="danger")],
+        [InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close_prompt", style="secondary")]
+    ]
+    return text, InlineKeyboardMarkup(inline_keyboard=buttons)
 
 @router.callback_query(F.data == "adm_set_api")
 async def adm_set_api(cb: CallbackQuery, state: FSMContext):
     if cb.from_user.id != ADMIN_ID:
         return await cb.answer()
+    
+    api_key = await get_setting("api_key")
+    if api_key:
+        text, kb = await get_api_key_info_card(api_key)
+        await cb.message.answer(text, reply_markup=kb, parse_mode="HTML")
+    else:
+        await state.set_state(AdminStates.SET_API_KEY)
+        await cb.message.answer(
+            "🔑 <b>Yangi API kalitni yuboring:</b>\n\n"
+            "• Kalit <code>ob_api_</code> bilan boshlanishi shart\n"
+            "• Kiritilgandan so'ng server bilan <b>avtomatik tekshiriladi</b>",
+            reply_markup=kb_cancel(), parse_mode="HTML"
+        )
+    await cb.answer()
+
+@router.callback_query(F.data == "adm_input_new_key")
+async def adm_input_new_key_cb(cb: CallbackQuery, state: FSMContext):
+    if cb.from_user.id != ADMIN_ID:
+        return await cb.answer()
     await state.set_state(AdminStates.SET_API_KEY)
+    await cb.message.delete()
     await cb.message.answer(
-        "🔑 <b>Yangi API kalitni yuboring:</b>\n\n"
+        "🔑 <b>Yangi API kalitingizni yuboring:</b>\n\n"
         "• Kalit <code>ob_api_</code> bilan boshlanishi shart\n"
         "• Kiritilgandan so'ng server bilan <b>avtomatik tekshiriladi</b>",
         reply_markup=kb_cancel(), parse_mode="HTML"
+    )
+    await cb.answer()
+
+@router.callback_query(F.data == "adm_delete_key")
+async def adm_delete_key_cb(cb: CallbackQuery, state: FSMContext):
+    if cb.from_user.id != ADMIN_ID:
+        return await cb.answer()
+    await set_setting("api_key", "")
+    await cb.message.delete()
+    await cb.message.answer(
+        "🗑️ <b>API kalit uzildi / o'chirildi!</b>\n\n"
+        "Yangi kalit kiritmaguningizcha bot ovozlarni qabul qila olmaydi.",
+        parse_mode="HTML"
+    )
+    await cb.message.answer(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
+    await cb.answer("API kalit o'chirildi!")
+
+@router.callback_query(F.data == "adm_topup_key")
+async def adm_topup_key_cb(cb: CallbackQuery, state: FSMContext):
+    if cb.from_user.id != ADMIN_ID:
+        return await cb.answer()
+    await state.set_state(AdminStates.TOPUP_VOTES)
+    await cb.message.delete()
+    await cb.message.answer(
+        "✍️ <b>Mavjud kalitingizga nechta ovoz qo'shmoqchisiz?</b>\n\n"
+        "• Masalan: <code>50</code>, <code>100</code>, <code>500</code>\n"
+        "• Narx: 1 ta ovoz = <b>1,000 UZS</b>\n\n"
+        "<i>Kerakli miqdorni yozib yuboring:</i>",
+        reply_markup=kb_cancel(),
+        parse_mode="HTML"
+    )
+    await cb.answer()
+
+@router.message(AdminStates.TOPUP_VOTES, F.text)
+async def process_topup_votes(msg: Message, state: FSMContext):
+    text = msg.text.strip()
+    if text == "❌ Bekor qilish":
+        await state.clear()
+        await msg.answer("Bekor qilindi.")
+        await msg.answer(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
+        return
+        
+    if not text.isdigit() or int(text) < 10:
+        return await msg.answer(
+            "❌ Iltimos, musbat butun son kiriting (kamida 10 ta ovoz):",
+            parse_mode="HTML"
+        )
+        
+    votes = int(text)
+    unit_price = 1000
+    price = votes * unit_price
+    await state.clear()
+    
+    api_key = await get_setting("api_key")
+    display_key = f"{api_key[:11]}...{api_key[-4:]}" if api_key and len(api_key) > 15 else (api_key or "—")
+    
+    buttons = [
+        [InlineKeyboardButton(text=f"✅ {price:,} UZS — To'lovga o'tish", callback_data=f"adm_topup_pay_{votes}", style="success")],
+        [InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="adm_set_api", style="danger")]
+    ]
+    
+    await msg.answer(
+        f"📦 <b>Balansni to'ldirish buyurtmasi:</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"🔑 <b>To'ldiriladigan kalit:</b> <code>{display_key}</code>\n"
+        f"🗳️ <b>Qo'shiladigan ovozlar:</b> +{votes:,} ta\n"
+        f"💵 <b>Hisoblangan summa:</b> <b>{price:,} UZS</b>\n"
+        f"📊 <i>(1 ta ovoz = {unit_price:,} UZS)</i>\n\n"
+        f"To'lov fakturasi va karta raqamini olish uchun <b>«To'lovga o'tish»</b> tugmasini bosing:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+        parse_mode="HTML"
+    )
+
+@router.callback_query(F.data.startswith("adm_topup_pay_"))
+async def adm_topup_pay_cb(cb: CallbackQuery):
+    if cb.from_user.id != ADMIN_ID:
+        return await cb.answer()
+        
+    votes = int(cb.data.split("_")[-1])
+    api_key = await get_setting("api_key")
+    loading = await cb.message.answer("🔄 <b>To'lov fakturasi yaratilmoqda...</b>", parse_mode="HTML")
+    
+    res, status = await call_api("/buy-key-invoice", "POST", {
+        "telegram_id": cb.from_user.id,
+        "votes": votes,
+        "target_key": api_key
+    })
+    await loading.delete()
+    
+    if status != 200 or "unique_price" not in res:
+        err = res.get("detail", "To'lov fakturasi yaratishda xatolik yuz berdi.")
+        return await cb.message.answer(f"❌ {err}", parse_mode="HTML")
+        
+    purchase_id = res["purchase_id"]
+    unique_price = res["unique_price"]
+    base_price = res["base_price"]
+    card_number = res["card_number"]
+    
+    # Fondagi avtomatik tekshiruvni ishga tushiramiz
+    asyncio.create_task(poll_purchase_status(purchase_id, cb.from_user.id))
+    
+    kb_invoice = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 To'ladim (Tekshirish)", callback_data=f"adm_paid_{purchase_id}", style="success")],
+        [InlineKeyboardButton(text="❌ Bekor qilish", callback_data=f"adm_cancel_inv_{purchase_id}", style="danger")],
+        [InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back", style="secondary")]
+    ])
+    
+    display_key = f"{api_key[:11]}...{api_key[-4:]}" if api_key and len(api_key) > 15 else (api_key or "—")
+    
+    await cb.message.answer(
+        f"💳 <b>Balansni to'ldirish uchun to'lov fakturasi:</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"🔑 <b>Kalit:</b> <code>{display_key}</code>\n"
+        f"📦 <b>Qo'shiladigan ovozlar:</b> +{votes:,} ta\n"
+        f"💰 Asl narxi: <b>{base_price:,} UZS</b>\n"
+        f"💳 Karta raqami (Uzcard/Humo): <code>{card_number}</code>\n\n"
+        f"💵 <b>O'TKAZISHINGIZ KERAK BO'LGAN ANIQ SUMMA:</b>\n"
+        f"👉 <b><code>{unique_price:,} UZS</code></b> 👈\n\n"
+        f"⏱️ <b>To'lov muddati: 30 daqiqa!</b>\n\n"
+        f"⚠️ <b>QAT'IY TALAB (DIQQAT):</b>\n"
+        f"Karta hisobiga aynan <b><code>{unique_price:,} UZS</code></b> o'tkazishingiz shart (tiyinlarigacha aniq!).\n"
+        f"O'tkazma kartaga tushishi bilan asosiy server to'lovni <b>avtomatik aniqlaydi</b> va kalitingiz balansi <b>avtomatik to'ldiriladi</b>!",
+        reply_markup=kb_invoice,
+        parse_mode="HTML"
     )
     await cb.answer()
 
@@ -1138,7 +1331,9 @@ async def process_api_key(msg: Message, state: FSMContext):
     text = msg.text.strip()
     if text == "❌ Bekor qilish":
         await state.clear()
-        return await msg.answer("Bekor qilindi.", reply_markup=kb_main())
+        await msg.answer("Bekor qilindi.")
+        await msg.answer(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
+        return
 
     if not text.startswith("ob_api_"):
         return await msg.answer(
@@ -1162,7 +1357,7 @@ async def process_api_key(msg: Message, state: FSMContext):
         f"✅ <b>API kalit muvaffaqiyatli saqlandi!</b>\n\n{result_msg}",
         parse_mode="HTML"
     )
-    await msg.answer("Admin panel:", reply_markup=kb_main())
+    await msg.answer(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
 
 # ──────────────────────────────────────────────
 #  LOYIHA IDni SOZLASH
