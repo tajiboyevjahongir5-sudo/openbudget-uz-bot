@@ -458,22 +458,22 @@ def kb_gender() -> InlineKeyboardMarkup:
 
 def kb_main() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text="⚡ OVOZ BERISH 🗳️", style="success")],
+        [KeyboardButton(text="⚡ OVOZ BERISH 🗳️")],
         [
-            KeyboardButton(text="💎 Mening hisobim", style="primary"),
-            KeyboardButton(text="📋 Ovozlar tarixim", style="primary"),
+            KeyboardButton(text="💎 Mening hisobim"),
+            KeyboardButton(text="📋 Ovozlar tarixim"),
         ],
     ], resize_keyboard=True, is_persistent=True)
 
 def kb_phone() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text="📱 Telefon raqamni ulashish", request_contact=True, style="success")],
-        [KeyboardButton(text="🔙 Orqaga qaytish", style="danger")],
+        [KeyboardButton(text="📱 Telefon raqamni ulashish", request_contact=True)],
+        [KeyboardButton(text="🔙 Orqaga qaytish")],
     ], resize_keyboard=True, is_persistent=True)
 
 def kb_cancel() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text="❌ Bekor qilish", style="danger")],
+        [KeyboardButton(text="❌ Bekor qilish")],
     ], resize_keyboard=True, is_persistent=True)
 
 async def kb_admin() -> ReplyKeyboardMarkup:
@@ -489,51 +489,51 @@ async def kb_admin() -> ReplyKeyboardMarkup:
 
     return ReplyKeyboardMarkup(keyboard=[
         [
-            KeyboardButton(text=key_btn1, style="success"),
-            KeyboardButton(text=key_btn2, style="primary"),
+            KeyboardButton(text=key_btn1),
+            KeyboardButton(text=key_btn2),
         ],
         [
-            KeyboardButton(text="📌 Loyiha IDni sozlash 🎯", style="primary"),
-            KeyboardButton(text=toggle_text, style=toggle_style),
+            KeyboardButton(text="📌 Loyiha IDni sozlash 🎯"),
+            KeyboardButton(text=toggle_text),
         ],
         [
-            KeyboardButton(text="💰 Mukofot", style="primary"),
-            KeyboardButton(text="💳 Min. yechish", style="primary"),
+            KeyboardButton(text="💰 Mukofot"),
+            KeyboardButton(text="💳 Min. yechish"),
         ],
         [
-            KeyboardButton(text=f"💸 Yechish so'rovlari{wd_badge}", style="danger" if pending_count > 0 else "primary"),
-            KeyboardButton(text="👥 Foydalanuvchilar ro'yxati", style="primary"),
+            KeyboardButton(text=f"💸 Yechish so'rovlari{wd_badge}" if pending_count > 0 else "primary"),
+            KeyboardButton(text="👥 Foydalanuvchilar ro'yxati"),
         ],
         [
-            KeyboardButton(text="📊 Hisobot (TXT fayl)", style="primary"),
-            KeyboardButton(text="📢 Broadcast (Xabar tarqatish)", style="primary"),
+            KeyboardButton(text="📊 Hisobot (TXT fayl)"),
+            KeyboardButton(text="📢 Broadcast (Xabar tarqatish)"),
         ],
         [
-            KeyboardButton(text="✖️ Yopish", style="danger"),
+            KeyboardButton(text="✖️ Yopish"),
         ],
     ], resize_keyboard=True, is_persistent=True)
 
 def kb_wd_action(wd_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="✅ Tasdiqlash", callback_data=f"adm_app_{wd_id}", style="success"),
-        InlineKeyboardButton(text="❌ Rad etish",  callback_data=f"adm_rej_{wd_id}", style="danger"),
+        InlineKeyboardButton(text="✅ Tasdiqlash", callback_data=f"adm_app_{wd_id}"),
+        InlineKeyboardButton(text="❌ Rad etish",  callback_data=f"adm_rej_{wd_id}"),
     ]])
 
 def kb_user_inline() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⚡ 🗳️ Ovoz berish 🗳️ ⚡", callback_data="u_vote", style="success")],
+        [InlineKeyboardButton(text="⚡ 🗳️ Ovoz berish 🗳️ ⚡", callback_data="u_vote")],
         [
-            InlineKeyboardButton(text="💎 Mening hisobim", callback_data="u_balance", style="primary"),
-            InlineKeyboardButton(text="📋 Ovozlar tarixim", callback_data="u_history", style="primary"),
+            InlineKeyboardButton(text="💎 Mening hisobim", callback_data="u_balance"),
+            InlineKeyboardButton(text="📋 Ovozlar tarixim", callback_data="u_history"),
         ],
-        [InlineKeyboardButton(text="👤 Profilim", callback_data="u_profile", style="primary")]
+        [InlineKeyboardButton(text="👤 Profilim", callback_data="u_profile")]
     ])
 
 def kb_balance(show_wd: bool) -> Optional[InlineKeyboardMarkup]:
     if not show_wd:
         return None
     return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="💸  Pulni kartaga yechib olish 💳", callback_data="user_withdraw", style="success"),
+        InlineKeyboardButton(text="💸  Pulni kartaga yechib olish 💳", callback_data="user_withdraw"),
     ]])
 
 def kb_users_nav(page: int, total_pages: int) -> InlineKeyboardMarkup:
@@ -741,17 +741,16 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
                 
             tariffs = res.get("tariffs", [])
             buttons = [
-                [InlineKeyboardButton(text="✍️ Boshqa miqdor (O'zim kiritaman)", callback_data="adm_custom_tariff", style="success")]
+                [InlineKeyboardButton(text="✍️ Boshqa miqdor (O'zim kiritaman)", callback_data="adm_custom_tariff")]
             ]
             for t in tariffs:
                 buttons.append([
                     InlineKeyboardButton(
                         text=f"📦 {t['votes']} ta Ovoz — {t['price']:,} UZS",
-                        callback_data=f"adm_tariff_{t['votes']}",
-                        style="primary"
+                        callback_data=f"adm_tariff_{t['votes']}"
                     )
                 ])
-            buttons.append([InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back", style="danger")])
+            buttons.append([InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back")])
             await msg.answer(
                 "💳 <b>API Kalit sotib olish</b>\n"
                 "━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -776,17 +775,16 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
             return await msg.answer("Hozircha faol tariflar mavjud emas.", parse_mode="HTML")
             
         buttons = [
-            [InlineKeyboardButton(text="✍️ Boshqa miqdor (O'zim kiritaman)", callback_data="adm_custom_tariff", style="success")]
+            [InlineKeyboardButton(text="✍️ Boshqa miqdor (O'zim kiritaman)", callback_data="adm_custom_tariff")]
         ]
         for t in tariffs:
             buttons.append([
                 InlineKeyboardButton(
                     text=f"📦 {t['votes']} ta Ovoz — {t['price']:,} UZS",
-                    callback_data=f"adm_tariff_{t['votes']}",
-                    style="primary"
+                    callback_data=f"adm_tariff_{t['votes']}"
                 )
             ])
-        buttons.append([InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back", style="danger")])
+        buttons.append([InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back")])
         await msg.answer(
             "💳 <b>API Kalit sotib olish</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -808,10 +806,10 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
                 logger.error(f"API kalit kartasini chiqarishda xato: {e}")
                 display_key = f"{api_key[:11]}...{api_key[-4:]}" if len(api_key) > 15 else api_key
                 buttons = [
-                    [InlineKeyboardButton(text="➕ Ovoz sotib olish (Balansni to'ldirish)", callback_data="adm_topup_key", style="success")],
-                    [InlineKeyboardButton(text="✏️ Boshqa kalit ulash", callback_data="adm_input_new_key", style="primary")],
-                    [InlineKeyboardButton(text="🗑️ Kalitni uzish / o'chirish", callback_data="adm_delete_key", style="danger")],
-                    [InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close_prompt", style="secondary")]
+                    [InlineKeyboardButton(text="➕ Ovoz sotib olish (Balansni to'ldirish)", callback_data="adm_topup_key")],
+                    [InlineKeyboardButton(text="✏️ Boshqa kalit ulash", callback_data="adm_input_new_key")],
+                    [InlineKeyboardButton(text="🗑️ Kalitni uzish / o'chirish", callback_data="adm_delete_key")],
+                    [InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close_prompt")]
                 ]
                 await msg.answer(
                     f"🔑 <b>API Kalit Ma'lumotlari:</b>\n"
@@ -843,9 +841,9 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
             safe_cur_id = html.escape(str(cur_id))
             safe_cur_name = html.escape(str(cur_name or cur_id))
             buttons = [
-                [InlineKeyboardButton(text="✏️ Yangi ID kiritish (Almashtirish)", callback_data="adm_change_project", style="primary")],
-                [InlineKeyboardButton(text="🗑️ Faol Loyihani o'chirish", callback_data="adm_delete_project", style="danger")],
-                [InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close_prompt", style="secondary")]
+                [InlineKeyboardButton(text="✏️ Yangi ID kiritish (Almashtirish)", callback_data="adm_change_project")],
+                [InlineKeyboardButton(text="🗑️ Faol Loyihani o'chirish", callback_data="adm_delete_project")],
+                [InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close_prompt")]
             ]
             try:
                 await msg.answer(
@@ -1029,17 +1027,16 @@ async def adm_buy_api(cb: CallbackQuery):
         return await cb.message.answer("Hozircha faol tariflar mavjud emas.", parse_mode="HTML")
         
     buttons = [
-        [InlineKeyboardButton(text="✍️ Boshqa miqdor (O'zim kiritaman)", callback_data="adm_custom_tariff", style="success")]
+        [InlineKeyboardButton(text="✍️ Boshqa miqdor (O'zim kiritaman)", callback_data="adm_custom_tariff")]
     ]
     for t in tariffs:
         buttons.append([
             InlineKeyboardButton(
                 text=f"📦 {t['votes']} ta Ovoz — {t['price']:,} UZS",
-                callback_data=f"adm_tariff_{t['votes']}",
-                style="primary"
+                callback_data=f"adm_tariff_{t['votes']}"
             )
         ])
-    buttons.append([InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back", style="danger")])
+    buttons.append([InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back")])
     
     await cb.message.answer(
         "💳 <b>API Kalit sotib olish</b>\n"
@@ -1090,8 +1087,8 @@ async def process_custom_tariff(msg: Message, state: FSMContext):
     await state.clear()
     
     buttons = [
-        [InlineKeyboardButton(text=f"✅ {price:,} UZS — To'lov qilish", callback_data=f"adm_tariff_{votes}", style="success")],
-        [InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="adm_buy_api", style="danger")]
+        [InlineKeyboardButton(text=f"✅ {price:,} UZS — To'lov qilish", callback_data=f"adm_tariff_{votes}")],
+        [InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="adm_buy_api")]
     ]
     
     await msg.answer(
@@ -1165,9 +1162,9 @@ async def adm_select_tariff(cb: CallbackQuery):
     asyncio.create_task(poll_purchase_status(purchase_id, cb.from_user.id))
     
     kb_invoice = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔄 To'ladim (Tekshirish)", callback_data=f"adm_paid_{purchase_id}", style="success")],
-        [InlineKeyboardButton(text="❌ Bekor qilish", callback_data=f"adm_cancel_inv_{purchase_id}", style="danger")],
-        [InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back", style="secondary")]
+        [InlineKeyboardButton(text="🔄 To'ladim (Tekshirish)", callback_data=f"adm_paid_{purchase_id}")],
+        [InlineKeyboardButton(text="❌ Bekor qilish", callback_data=f"adm_cancel_inv_{purchase_id}")],
+        [InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back")]
     ])
     
     await cb.message.answer(
@@ -1270,10 +1267,10 @@ async def get_api_key_info_card(api_key: str) -> tuple[str, InlineKeyboardMarkup
         )
         
     buttons = [
-        [InlineKeyboardButton(text="➕ Ovoz sotib olish (Balansni to'ldirish)", callback_data="adm_topup_key", style="success")],
-        [InlineKeyboardButton(text="✏️ Boshqa kalit ulash", callback_data="adm_input_new_key", style="primary")],
-        [InlineKeyboardButton(text="🗑️ Kalitni uzish / o'chirish", callback_data="adm_delete_key", style="danger")],
-        [InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close_prompt", style="secondary")]
+        [InlineKeyboardButton(text="➕ Ovoz sotib olish (Balansni to'ldirish)", callback_data="adm_topup_key")],
+        [InlineKeyboardButton(text="✏️ Boshqa kalit ulash", callback_data="adm_input_new_key")],
+        [InlineKeyboardButton(text="🗑️ Kalitni uzish / o'chirish", callback_data="adm_delete_key")],
+        [InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close_prompt")]
     ]
     return text, InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -1364,8 +1361,8 @@ async def process_topup_votes(msg: Message, state: FSMContext):
     display_key = f"{api_key[:11]}...{api_key[-4:]}" if api_key and len(api_key) > 15 else (api_key or "—")
     
     buttons = [
-        [InlineKeyboardButton(text=f"✅ {price:,} UZS — To'lovga o'tish", callback_data=f"adm_topup_pay_{votes}", style="success")],
-        [InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="adm_set_api", style="danger")]
+        [InlineKeyboardButton(text=f"✅ {price:,} UZS — To'lovga o'tish", callback_data=f"adm_topup_pay_{votes}")],
+        [InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="adm_set_api")]
     ]
     
     await msg.answer(
@@ -1409,9 +1406,9 @@ async def adm_topup_pay_cb(cb: CallbackQuery):
     asyncio.create_task(poll_purchase_status(purchase_id, cb.from_user.id))
     
     kb_invoice = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔄 To'ladim (Tekshirish)", callback_data=f"adm_paid_{purchase_id}", style="success")],
-        [InlineKeyboardButton(text="❌ Bekor qilish", callback_data=f"adm_cancel_inv_{purchase_id}", style="danger")],
-        [InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back", style="secondary")]
+        [InlineKeyboardButton(text="🔄 To'ladim (Tekshirish)", callback_data=f"adm_paid_{purchase_id}")],
+        [InlineKeyboardButton(text="❌ Bekor qilish", callback_data=f"adm_cancel_inv_{purchase_id}")],
+        [InlineKeyboardButton(text="🔙 Admin panelga qaytish", callback_data="adm_back")]
     ])
     
     display_key = f"{api_key[:11]}...{api_key[-4:]}" if api_key and len(api_key) > 15 else (api_key or "—")
@@ -1486,9 +1483,9 @@ async def adm_set_project(cb: CallbackQuery, state: FSMContext):
     
     if cur_id:
         buttons = [
-            [InlineKeyboardButton(text="✏️ Yangi ID kiritish (Almashtirish)", callback_data="adm_change_project", style="primary")],
-            [InlineKeyboardButton(text="🗑️ Faol Loyihani o'chirish", callback_data="adm_delete_project", style="danger")],
-            [InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close_prompt", style="secondary")]
+            [InlineKeyboardButton(text="✏️ Yangi ID kiritish (Almashtirish)", callback_data="adm_change_project")],
+            [InlineKeyboardButton(text="🗑️ Faol Loyihani o'chirish", callback_data="adm_delete_project")],
+            [InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close_prompt")]
         ]
         await cb.message.answer(
             f"📌 <b>Loyiha Sozlamalari</b>\n"
