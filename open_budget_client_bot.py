@@ -740,13 +740,11 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
                 )
                 
             tariffs = res.get("tariffs", [])
-            buttons = [
-                [InlineKeyboardButton(text="✍️ Boshqa miqdor (O'zim kiritaman)", callback_data="adm_custom_tariff", style="success")]
-            ]
+            buttons = []
             for t in tariffs:
                 buttons.append([
                     InlineKeyboardButton(
-                        text=f"📦 {t['votes']} ta Ovoz — {t['price']:,} UZS",
+                        text=f"📦 {t['name']} — {t['price']:,} UZS",
                         callback_data=f"adm_tariff_{t['votes']}",
                         style="primary"
                     )
@@ -755,7 +753,7 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
             await msg.answer(
                 "💳 <b>API Kalit sotib olish</b>\n"
                 "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "Botingiz uchun kerakli ovoz limitiga mos tarifni tanlang yoki o'zingiz xohlagan miqdorni kiriting:",
+                "Tizimdan foydalanish uchun tarifni tanlang:",
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
                 parse_mode="HTML"
             )
@@ -775,13 +773,11 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
         if not tariffs:
             return await msg.answer("Hozircha faol tariflar mavjud emas.", parse_mode="HTML")
             
-        buttons = [
-            [InlineKeyboardButton(text="✍️ Boshqa miqdor (O'zim kiritaman)", callback_data="adm_custom_tariff", style="success")]
-        ]
+        buttons = []
         for t in tariffs:
             buttons.append([
                 InlineKeyboardButton(
-                    text=f"📦 {t['votes']} ta Ovoz — {t['price']:,} UZS",
+                    text=f"📦 {t['name']} — {t['price']:,} UZS",
                     callback_data=f"adm_tariff_{t['votes']}",
                     style="primary"
                 )
@@ -793,7 +789,7 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
             "🔑 <b>API Kalit nima?</b>\n"
             "Bu botingiz asosiy serverga ulanib, <b>captchalarni sun'iy intellekt (AI) yordamida avtomatik yechishi</b> va barqaror ishlashi uchun kerakli balans (yoqilg'i) hisoblanadi.\n\n"
             "⚠️ <b>Muhim eslatma:</b> Ushbu tariflar odamlar yig'gan ovozi uchun to'lanadigan mukofot puli emas! Bu botingiz serverga ulanib ishlashi uchun ketadigan sarf-xarajat to'lovidir.\n\n"
-            "Botingiz uchun kerakli ovoz limitiga mos tarifni tanlang yoki o'zingiz xohlagan miqdorni kiriting:",
+            "Tizimdan foydalanish uchun tarifni tanlang:",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
             parse_mode="HTML"
         )
@@ -1028,13 +1024,11 @@ async def adm_buy_api(cb: CallbackQuery):
     if not tariffs:
         return await cb.message.answer("Hozircha faol tariflar mavjud emas.", parse_mode="HTML")
         
-    buttons = [
-        [InlineKeyboardButton(text="✍️ Boshqa miqdor (O'zim kiritaman)", callback_data="adm_custom_tariff", style="success")]
-    ]
+    buttons = []
     for t in tariffs:
         buttons.append([
             InlineKeyboardButton(
-                text=f"📦 {t['votes']} ta Ovoz — {t['price']:,} UZS",
+                text=f"📦 {t['name']} — {t['price']:,} UZS",
                 callback_data=f"adm_tariff_{t['votes']}",
                 style="primary"
             )
@@ -1047,7 +1041,7 @@ async def adm_buy_api(cb: CallbackQuery):
         "🔑 <b>API Kalit nima?</b>\n"
         "Bu botingiz asosiy serverga ulanib, <b>captchalarni sun'iy intellekt (AI) yordamida avtomatik yechishi</b> va barqaror ishlashi uchun kerakli balans (yoqilg'i) hisoblanadi.\n\n"
         "⚠️ <b>Muhim eslatma:</b> Ushbu tariflar odamlar yig'gan ovozi uchun to'lanadigan mukofot puli emas! Bu botingiz serverga ulanib ishlashi uchun ketadigan sarf-xarajat to'lovidir.\n\n"
-        "Botingiz uchun kerakli ovoz limitiga mos tarifni tanlang yoki o'zingiz xohlagan miqdorni kiriting:",
+        "Tizimdan foydalanish uchun tarifni tanlang:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
         parse_mode="HTML"
     )
@@ -1242,10 +1236,10 @@ async def get_api_key_info_card(api_key: str) -> tuple[str, InlineKeyboardMarkup
     
     if status == 200 and "votes_remaining" in res:
         created_at = res.get("created_at", "—")
-        rem = res.get("votes_remaining", 0)
-        total_bought = res.get("total_votes_bought", rem)
-        paid = res.get("total_paid_uzs", total_bought * 1000)
-        bal = res.get("balance_uzs", 0)
+        activated_at = res.get("activated_at", "—")
+        expires_at = res.get("expires_at", "—")
+        days_remaining = res.get("days_remaining", "—")
+        paid = res.get("total_paid_uzs", 500000)
         is_active = res.get("is_active", True)
         status_txt = "🟢 Faol" if is_active else "🚫 Ega tomonidan o'chirilgan (@jahongir_1220)"
         
@@ -1253,12 +1247,14 @@ async def get_api_key_info_card(api_key: str) -> tuple[str, InlineKeyboardMarkup
             "🔑 <b>API Kalit Ma'lumotlari</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🔑 <b>Kalit:</b> <code>{display_key}</code>\n"
-            f"📅 <b>Faollashtirilgan sana:</b> {created_at}\n"
-            f"💵 <b>To'langan summa:</b> <b>{paid:,} UZS</b> ({total_bought:,} ta ovoz uchun)\n"
-            f"📊 <b>Ovozlar holati:</b> <b>{total_bought:,} / {rem:,} ta qoldi</b>\n"
-            f"💰 <b>Joriy balans:</b> <b>{bal:,} UZS</b>\n"
+            f"📅 <b>Yaratilgan sana:</b> {created_at}\n"
+            f"🚀 <b>Faollashtirilgan sana:</b> {activated_at}\n"
+            f"⏳ <b>Amal qilish muddati:</b> {expires_at}\n"
+            f"⏱️ <b>Qolgan vaqt:</b> <b>{days_remaining}</b>\n"
+            f"💵 <b>To'langan summa:</b> <b>{paid:,} UZS</b>\n"
+            f"📊 <b>Ovozlar limiti:</b> <b>Cheksiz (15 kun)</b>\n"
             f"⚡ <b>Holati:</b> {status_txt}\n\n"
-            f"<i>Kalit balansini to'ldirish yoki boshqa kalit ulash uchun quyidagi tugmalardan birini tanlang:</i>"
+            f"<i>Kalit muddatini uzaytirish yoki boshqa kalit ulash uchun quyidagi tugmalardan birini tanlang:</i>"
         )
     else:
         text = (
@@ -1270,7 +1266,7 @@ async def get_api_key_info_card(api_key: str) -> tuple[str, InlineKeyboardMarkup
         )
         
     buttons = [
-        [InlineKeyboardButton(text="➕ Ovoz sotib olish (Balansni to'ldirish)", callback_data="adm_topup_key", style="success")],
+        [InlineKeyboardButton(text="➕ Kalit muddatini uzaytirish (15 kun)", callback_data="adm_topup_key", style="success")],
         [InlineKeyboardButton(text="✏️ Boshqa kalit ulash", callback_data="adm_input_new_key", style="primary")],
         [InlineKeyboardButton(text="🗑️ Kalitni uzish / o'chirish", callback_data="adm_delete_key", style="danger")],
         [InlineKeyboardButton(text="✖️ Yopish", callback_data="adm_close_prompt", style="primary")]
@@ -1328,57 +1324,30 @@ async def adm_delete_key_cb(cb: CallbackQuery, state: FSMContext):
 async def adm_topup_key_cb(cb: CallbackQuery, state: FSMContext):
     if cb.from_user.id != ADMIN_ID:
         return await cb.answer()
-    await state.set_state(AdminStates.TOPUP_VOTES)
-    await cb.message.delete()
-    await cb.message.answer(
-        "✍️ <b>Mavjud kalitingizga nechta ovoz qo'shmoqchisiz?</b>\n\n"
-        "• Masalan: <code>50</code>, <code>100</code>, <code>500</code>\n"
-        "• Narx: 1 ta ovoz = <b>1,000 UZS</b>\n\n"
-        "<i>Kerakli miqdorni yozib yuboring:</i>",
-        reply_markup=kb_cancel(),
-        parse_mode="HTML"
-    )
-    await cb.answer()
-
-@router.message(AdminStates.TOPUP_VOTES, F.text)
-async def process_topup_votes(msg: Message, state: FSMContext):
-    text = msg.text.strip()
-    if text == "❌ Bekor qilish":
-        await state.clear()
-        await msg.answer("Bekor qilindi.")
-        await msg.answer(await admin_panel_text(), reply_markup=await kb_admin(), parse_mode="HTML")
-        return
         
-    if not text.isdigit() or int(text) < 10:
-        return await msg.answer(
-            "❌ Iltimos, musbat butun son kiriting (kamida 10 ta ovoz):",
-            parse_mode="HTML"
-        )
-        
-    votes = int(text)
-    unit_price = 1000
-    price = votes * unit_price
-    await state.clear()
+    votes = 15  # 15 kunni bildiradi
+    price = 500000
     
     api_key = await get_setting("api_key")
     display_key = f"{api_key[:11]}...{api_key[-4:]}" if api_key and len(api_key) > 15 else (api_key or "—")
     
     buttons = [
-        [InlineKeyboardButton(text=f"✅ {price:,} UZS — To'lovga o'tish", callback_data=f"adm_topup_pay_{votes}", style="success")],
+        [InlineKeyboardButton(text="✅ 500,000 UZS — To'lovga o'tish", callback_data=f"adm_topup_pay_{votes}", style="success")],
         [InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="adm_set_api", style="danger")]
     ]
     
-    await msg.answer(
-        f"📦 <b>Balansni to'ldirish buyurtmasi:</b>\n"
+    await cb.message.delete()
+    await cb.message.answer(
+        f"📦 <b>Muddatni uzaytirish buyurtmasi:</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"🔑 <b>To'ldiriladigan kalit:</b> <code>{display_key}</code>\n"
-        f"🗳️ <b>Qo'shiladigan ovozlar:</b> +{votes:,} ta\n"
-        f"💵 <b>Hisoblangan summa:</b> <b>{price:,} UZS</b>\n"
-        f"📊 <i>(1 ta ovoz = {unit_price:,} UZS)</i>\n\n"
+        f"⏳ <b>Qo'shiladigan muddat:</b> +15 kun (Cheksiz Ovoz)\n"
+        f"💵 <b>Hisoblangan summa:</b> <b>500,000 UZS</b>\n\n"
         f"To'lov fakturasi va karta raqamini olish uchun <b>«To'lovga o'tish»</b> tugmasini bosing:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
         parse_mode="HTML"
     )
+    await cb.answer()
 
 @router.callback_query(F.data.startswith("adm_topup_pay_"))
 async def adm_topup_pay_cb(cb: CallbackQuery):
@@ -1417,10 +1386,10 @@ async def adm_topup_pay_cb(cb: CallbackQuery):
     display_key = f"{api_key[:11]}...{api_key[-4:]}" if api_key and len(api_key) > 15 else (api_key or "—")
     
     await cb.message.answer(
-        f"💳 <b>Balansni to'ldirish uchun to'lov fakturasi:</b>\n"
+        f"💳 <b>Muddatni uzaytirish uchun to'lov fakturasi:</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"🔑 <b>Kalit:</b> <code>{display_key}</code>\n"
-        f"📦 <b>Qo'shiladigan ovozlar:</b> +{votes:,} ta\n"
+        f"📦 <b>Qo'shiladigan muddat:</b> +15 kun (Cheksiz Ovoz)\n"
         f"💰 Asl narxi: <b>{base_price:,} UZS</b>\n"
         f"💳 Karta raqami (Uzcard/Humo): <code>{card_number}</code>\n\n"
         f"💵 <b>O'TKAZISHINGIZ KERAK BO'LGAN ANIQ SUMMA:</b>\n"
@@ -1428,7 +1397,7 @@ async def adm_topup_pay_cb(cb: CallbackQuery):
         f"⏱️ <b>To'lov muddati: 30 daqiqa!</b>\n\n"
         f"⚠️ <b>QAT'IY TALAB (DIQQAT):</b>\n"
         f"Karta hisobiga aynan <b><code>{unique_price:,} UZS</code></b> o'tkazishingiz shart (tiyinlarigacha aniq!).\n"
-        f"O'tkazma kartaga tushishi bilan asosiy server to'lovni <b>avtomatik aniqlaydi</b> va kalitingiz balansi <b>avtomatik to'ldiriladi</b>!",
+        f"O'tkazma kartaga tushishi bilan asosiy server to'lovni <b>avtomatik aniqlaydi</b> va kalitingiz muddati <b>avtomatik uzaytiriladi</b>!",
         reply_markup=kb_invoice,
         parse_mode="HTML"
     )
