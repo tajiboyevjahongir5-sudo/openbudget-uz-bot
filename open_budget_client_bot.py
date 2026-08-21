@@ -52,6 +52,7 @@ BOT_TOKEN           = os.getenv("BOT_TOKEN", "1234567890:AAHxxxxxxxxxxxxxxxxxxxx
 ADMIN_ID            = int(os.getenv("ADMIN_ID", "0"))
 API_URL             = os.getenv("API_URL", "https://openbudjet-production.up.railway.app/api/v1")
 VOTE_COOLDOWN_HOURS = int(os.getenv("VOTE_COOLDOWN_HOURS", "0"))  # 0 = cheklovsiz
+PAYOUTS_CHANNEL     = os.getenv("PAYOUTS_CHANNEL", "")
 
 DB_PATH = os.getenv("DATABASE_PATH", "client_bot.db")
 
@@ -1834,6 +1835,15 @@ async def adm_wd_list(cb: CallbackQuery):
 @router.callback_query(F.data.startswith("adm_app_"))
 async def adm_approve_wd(cb: CallbackQuery):
     wd_id      = int(cb.data.split("_")[-1])
+    
+    # Karta raqamini olib turamiz
+    card_number = "—"
+    conn = await get_db_conn()
+    async with conn.execute("SELECT card_number FROM withdrawals WHERE id=?", (wd_id,)) as c:
+        row = await c.fetchone()
+        if row:
+            card_number = row[0]
+            
     ok, tid, amount = await process_withdrawal(wd_id, True)
     if ok:
         await cb.message.edit_text(
@@ -1849,6 +1859,25 @@ async def adm_approve_wd(cb: CallbackQuery):
             )
         except Exception:
             pass
+            
+        # To'lovlar kanaliga xabar yuborish
+        if PAYOUTS_CHANNEL:
+            try:
+                # Mask card number (e.g. 8600 **** **** 1234)
+                masked_card = f"{card_number[:4]} **** **** {card_number[-4:]}" if len(card_number) >= 16 else card_number
+                
+                pay_text = (
+                    f"✅ <b>Muvaffaqiyatli To'lov!</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"👤 Foydalanuvchi: <a href='tg://user?id={tid}'>{tid}</a>\n"
+                    f"💰 Summa: <b>{amount:,} UZS</b>\n"
+                    f"💳 Karta: <code>{masked_card}</code>\n\n"
+                    f"🤖 Biz bilan ishlaganingiz uchun rahmat! Ovoz bering va pul ishlang!"
+                )
+                await bot.send_message(chat_id=PAYOUTS_CHANNEL, text=pay_text, parse_mode="HTML")
+            except Exception as e:
+                logger.error(f"To'lov kanaliga xabar yuborishda xatolik: {e}")
+                
     await cb.answer("✅ Tasdiqlandi!" if ok else "❌ So'rov topilmadi")
 
 @router.callback_query(F.data.startswith("adm_rej_"))
