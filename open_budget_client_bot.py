@@ -389,6 +389,7 @@ class AdminStates(StatesGroup):
     BROADCAST     = State()
     CUSTOM_TARIFF = State()
     TOPUP_VOTES   = State()
+    SET_PAYOUT_CHANNEL = State()
 
 class WithdrawStates(StatesGroup):
     CARD   = State()
@@ -464,6 +465,9 @@ def kb_main() -> ReplyKeyboardMarkup:
             KeyboardButton(text="💎 Mening hisobim", style="primary"),
             KeyboardButton(text="📋 Ovozlar tarixim", style="primary"),
         ],
+        [
+            KeyboardButton(text="📢 To'lovlar kanali", style="primary"),
+        ],
     ], resize_keyboard=True, is_persistent=True)
 
 def kb_phone() -> ReplyKeyboardMarkup:
@@ -500,6 +504,7 @@ async def kb_admin() -> ReplyKeyboardMarkup:
         [
             KeyboardButton(text="💰 Mukofot", style="primary"),
             KeyboardButton(text="💳 Min. yechish", style="primary"),
+            KeyboardButton(text="📢 To'lov kanali", style="primary"),
         ],
         [
             KeyboardButton(text=f"💸 Yechish so'rovlari{wd_badge}", style="danger" if pending_count > 0 else "primary"),
@@ -691,6 +696,7 @@ ADMIN_BUTTON_KEYWORDS = [
     "Loyiha ID",
     "Mukofot",
     "Min. yechish",
+    "To'lov kanali",
     "Ovoz berish:",
     "Yechish so'rovlari",
     "Foydalanuvchilar ro'yxati",
@@ -884,6 +890,17 @@ async def admin_menu_handler(msg: Message, state: FSMContext):
         await msg.answer(
             f"💳 <b>Minimal yechish miqdorini kiriting (UZS):</b>\n\n"
             f"Hozirgi qiymat: <b>{current:,} UZS</b>",
+            reply_markup=kb_cancel(), parse_mode="HTML"
+        )
+
+    elif "To'lov kanali" in text:
+        current = await get_setting("payouts_channel") or PAYOUTS_CHANNEL or "Sozlanmagan"
+        await state.set_state(AdminStates.SET_PAYOUT_CHANNEL)
+        await msg.answer(
+            f"📢 <b>To'lovlarni e'lon qilish kanalini kiriting:</b>\n\n"
+            f"Joriy qiymat: <code>{current}</code>\n\n"
+            f"Yozish namunasi: <code>@mening_tolovlarim</code> yoki <code>-100...</code> (ID)\n"
+            f"Uni o'chirish uchun <code>0</code> yoki <code>ochir</code> deb yuboring.",
             reply_markup=kb_cancel(), parse_mode="HTML"
         )
 
@@ -1646,6 +1663,29 @@ async def process_min_wd(msg: Message, state: FSMContext):
     await state.clear()
     await msg.answer(
         f"✅ Minimal yechish <b>{int(text):,} UZS</b> ga o'zgartirildi!",
+        reply_markup=kb_main(), parse_mode="HTML"
+    )
+
+@router.message(AdminStates.SET_PAYOUT_CHANNEL, F.text)
+async def process_payouts_channel_setting(msg: Message, state: FSMContext):
+    text = msg.text.strip()
+    if text == "❌ Bekor qilish":
+        await state.clear()
+        return await msg.answer("Bekor qilindi.", reply_markup=kb_main())
+        
+    if text.lower() in ["0", "ochir", "o'chir", "delete"]:
+        await set_setting("payouts_channel", "")
+        await state.clear()
+        return await msg.answer("✅ To'lovlar kanali sozlamasi o'chirildi.", reply_markup=kb_main())
+        
+    if not text.startswith("@") and not text.startswith("-100"):
+        text = f"@{text}"
+        
+    await set_setting("payouts_channel", text)
+    await state.clear()
+    await msg.answer(
+        f"✅ To'lovlarni e'lon qilish kanali muvaffaqiyatli o'zgartirildi!\n\n"
+        f"📢 Yangi kanal: <code>{text}</code>",
         reply_markup=kb_main(), parse_mode="HTML"
     )
 
