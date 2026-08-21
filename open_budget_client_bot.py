@@ -33,7 +33,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import (
     Message, ReplyKeyboardMarkup, KeyboardButton,
     ReplyKeyboardRemove, BufferedInputFile,
-    InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+    InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery,
+    WebAppInfo
 )
 
 # ──────────────────────────────────────────────
@@ -53,6 +54,7 @@ ADMIN_ID            = int(os.getenv("ADMIN_ID", "0"))
 API_URL             = os.getenv("API_URL", "https://openbudjet-production.up.railway.app/api/v1")
 VOTE_COOLDOWN_HOURS = int(os.getenv("VOTE_COOLDOWN_HOURS", "0"))  # 0 = cheklovsiz
 PAYOUTS_CHANNEL     = os.getenv("PAYOUTS_CHANNEL", "")
+_payouts_channel_cache = ""
 
 DB_PATH = os.getenv("DATABASE_PATH", "client_bot.db")
 
@@ -153,6 +155,9 @@ async def set_setting(key: str, value: str):
     conn = await get_db_conn()
     await conn.execute("INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)", (key, value))
     await conn.commit()
+    if key == "payouts_channel":
+        global _payouts_channel_cache
+        _payouts_channel_cache = value
 
 # ─── Foydalanuvchilar ───
 
@@ -459,6 +464,11 @@ def kb_gender() -> InlineKeyboardMarkup:
     ]])
 
 def kb_main() -> ReplyKeyboardMarkup:
+    base_url = API_URL.split("/api/v1")[0].rstrip("/") if "/api/v1" in API_URL else API_URL.rstrip("/")
+    redirect_url = f"{base_url}/redirect-channel"
+    if _payouts_channel_cache:
+        redirect_url += f"?channel={_payouts_channel_cache}"
+
     return ReplyKeyboardMarkup(keyboard=[
         [KeyboardButton(text="⚡ OVOZ BERISH 🗳️", style="success")],
         [
@@ -466,7 +476,7 @@ def kb_main() -> ReplyKeyboardMarkup:
             KeyboardButton(text="📋 Ovozlar tarixim", style="primary"),
         ],
         [
-            KeyboardButton(text="📢 To'lovlar kanali", style="primary"),
+            KeyboardButton(text="📢 To'lovlar kanali", web_app=WebAppInfo(url=redirect_url), style="primary"),
         ],
     ], resize_keyboard=True, is_persistent=True)
 
@@ -2714,6 +2724,9 @@ async def vote_captcha2(msg: Message, state: FSMContext):
 
 async def main():
     await init_db()
+    global _payouts_channel_cache
+    _payouts_channel_cache = (await get_setting("payouts_channel")) or PAYOUTS_CHANNEL
+
     dp.include_router(router)
     logger.info("🚀 Open Budget Mijoz Boti v2.0 ishga tushdi!")
     try:
