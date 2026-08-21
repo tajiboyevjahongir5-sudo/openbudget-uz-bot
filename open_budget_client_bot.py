@@ -2341,138 +2341,113 @@ async def vote_captcha1(msg: Message, state: FSMContext):
 # ─── REGISTRATION FLOW ───
 
 async def start_reg_flow(msg: Message, state: FSMContext, phone: str):
-    await state.update_data(phone=phone)
-    await state.set_state(VoteStates.REG_NAME)
-    await msg.answer(
-        f"✅ <b>Telefon raqam: +{phone}</b>\n\n"
-        "📋 <b>Ro'yxatdan o'tish kerak!</b>\n\n"
-        "1️⃣ <b>Ism va Familiyangizni kiriting:</b>\n"
-        "<i>(Masalan: Aliyev Jahongir)</i>",
-        reply_markup=kb_cancel(), parse_mode="HTML"
-    )
-
-@router.message(VoteStates.REG_NAME, F.text)
-async def reg_name(msg: Message, state: FSMContext):
-    if msg.text and msg.text in ("🔙 Orqaga", "❌ Bekor qilish"):
-        await state.clear()
-        return await msg.answer("Bekor qilindi.", reply_markup=kb_main())
+    import random
     
-    await state.update_data(fullname=msg.text.strip())
-    await state.set_state(VoteStates.REG_BIRTHDAY)
-    await msg.answer(
-        "2️⃣ <b>Tug'ilgan sanangizni kiriting:</b>\n"
-        "<i>(Masalan: 01.01.1998)</i>",
-        reply_markup=kb_cancel(), parse_mode="HTML"
-    )
-
-@router.message(VoteStates.REG_BIRTHDAY, F.text)
-async def reg_birthday(msg: Message, state: FSMContext):
-    if msg.text and msg.text in ("🔙 Orqaga", "❌ Bekor qilish"):
-        await state.clear()
-        return await msg.answer("Bekor qilindi.", reply_markup=kb_main())
+    # 1. Ma'lumotlarni tasodifiy generatsiya qilamiz
+    uz_names = [
+        "Jahongir Aliyev", "Sardor Karimov", "Madina Umarova", 
+        "Diyorbek Toshpulatov", "Asadbek Rahimov", "Madina Toshmatova",
+        "Zilola Ahmedova", "Azizbek Karimov", "Dilshodbek Ergashev",
+        "Shahzoda Karimova", "Sirojiddin Nabiyev", "Nozima Umarova"
+    ]
+    fullname = random.choice(uz_names)
+    gender = random.choice(["M", "F"])
     
-    text = msg.text.strip()
-    try:
-        dt = datetime.strptime(text, "%d.%m.%Y")
-        birth_date = dt.strftime("%Y-%m-%d")
-    except ValueError:
-        return await msg.answer("❌ Noto'g'ri format. Iltimos, DD.MM.YYYY formatida kiriting (masalan: 01.01.1998):")
+    year = random.randint(1985, 2004)
+    month = random.randint(1, 12)
+    day = random.randint(1, 28)
+    birth_date = f"{year:04d}-{month:02d}-{day:02d}"
     
-    await state.update_data(birth_date=birth_date)
-    await state.set_state(VoteStates.REG_GENDER)
-    await msg.answer("3️⃣ <b>Jinsingizni tanlang:</b>", reply_markup=kb_gender(), parse_mode="HTML")
-
-@router.callback_query(F.data.startswith("reg_gender_"), VoteStates.REG_GENDER)
-async def reg_gender(cb: CallbackQuery, state: FSMContext):
-    gender = cb.data.split("_")[-1]
-    await state.update_data(gender=gender)
-    await state.set_state(VoteStates.REG_REGION)
-    await cb.message.edit_text("4️⃣ <b>Viloyatni tanlang:</b>", reply_markup=kb_regions(), parse_mode="HTML")
-    await cb.answer()
-
-@router.callback_query(F.data.startswith("reg_reg_"), VoteStates.REG_REGION)
-async def reg_region(cb: CallbackQuery, state: FSMContext):
-    region_id = int(cb.data.split("_")[-1])
-    await state.update_data(region_id=region_id)
-    await state.set_state(VoteStates.REG_DISTRICT)
-    await cb.message.edit_text("5️⃣ <b>Tumanni tanlang:</b>", reply_markup=kb_districts(region_id), parse_mode="HTML")
-    await cb.answer()
-
-@router.callback_query(F.data.startswith("reg_dist_"), VoteStates.REG_DISTRICT)
-async def reg_district(cb: CallbackQuery, state: FSMContext):
-    district_id = int(cb.data.split("_")[-1])
-    await state.update_data(district_id=district_id)
+    # 2. Loyiha viloyat va tuman IDlarini olamiz
+    project_id = await get_setting("project_id")
+    region_id = 14  # Toshkent sh. (default)
+    district_id = 123  # Yunusobod (default)
     
-    await cb.message.delete()
-    loading = await cb.message.answer("🔄 <b>Captcha yuklanmoqda...</b>", parse_mode="HTML")
-    
-    res, status = await call_api("/captcha", "POST")
-    if status != 200 or "captcha" not in res:
-        await state.clear()
+    # Loyiha ma'lumotlarini qidirib ko'ramiz
+    res_init, status_init = await call_api(f"/initiative/{project_id}", "GET")
+    if status_init == 200 and "initiative" in res_init:
+        init = res_init["initiative"]
+        if init.get("regionId"):
+            region_id = int(init["regionId"])
+        if init.get("districtId"):
+            district_id = int(init["districtId"])
+
+    # 3. Captcha olamiz
+    loading = await msg.answer("🔄 <b>Ro'yxatdan o'tish boshlanmoqda, kuting...</b>", parse_mode="HTML")
+    res_cap, status_cap = await call_api("/captcha", "POST")
+    if status_cap != 200 or "captcha" not in res_cap:
         await loading.delete()
-        return await cb.message.answer("❌ Captcha yuklashda xatolik yuz berdi.", reply_markup=kb_main())
+        return await msg.answer("❌ Captcha yuklashda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring.", reply_markup=kb_main())
 
-    captcha = res["captcha"]
-    await state.update_data(reg_captcha_key=captcha["key"])
-
+    captcha = res_cap["captcha"]
+    
+    # Ma'lumotlarni holatda (state) saqlaymiz
+    await state.update_data(
+        phone=phone,
+        fullname=fullname,
+        birth_date=birth_date,
+        gender=gender,
+        region_id=region_id,
+        district_id=district_id,
+        reg_captcha_key=captcha["key"]
+    )
+    
+    # Avtomatik yechilgan bo'lsa
     solved_result = captcha.get("solved_result")
     if solved_result is not None:
         await loading.delete()
-        sending = await cb.message.answer("🤖 <b>Captcha avtomatik yechildi. Ro'yxatdan o'tish ma'lumotlari yuborilmoqda...</b>", parse_mode="HTML")
-        data = await state.get_data()
+        sending = await msg.answer("🤖 <b>Ro'yxatdan o'tish captchasi avtomatik yechildi. SMS yuborilmoqda...</b>", parse_mode="HTML")
         
         backend_payload = {
-            "first_name": data["fullname"],
+            "first_name": fullname,
             "last_name": "",
-            "phone_number": data["phone"],
-            "gender": "MALE" if data["gender"] == "M" else "FEMALE",
-            "birth_date": data["birth_date"],
-            "region_id": int(data["region_id"]),
-            "district_id": int(data["district_id"]),
-            "project_id": await get_setting("project_id"),
+            "phone_number": phone,
+            "gender": "MALE" if gender == "M" else "FEMALE",
+            "birth_date": birth_date,
+            "region_id": int(region_id),
+            "district_id": int(district_id),
+            "project_id": project_id,
             "captcha_key": captcha["key"],
             "captcha_result": int(solved_result),
             "profession": "Xodim"
         }
+        
         try:
             res_reg, status_reg = await call_api("/register/send-otp", "POST", json_data=backend_payload)
         except Exception as e:
             await state.clear()
             await sending.delete()
-            await cb.answer()
-            return await cb.message.answer(f"❌ Server xatosi: {e}", reply_markup=kb_main())
+            return await msg.answer(f"❌ Server xatosi: {e}", reply_markup=kb_main())
 
         if status_reg != 200:
             err = res_reg.get("detail", "Xatolik yuz berdi.")
             await state.clear()
             await sending.delete()
-            await cb.answer()
-            return await cb.message.answer(f"❌ {err}", reply_markup=kb_main())
+            return await msg.answer(f"❌ {err}", reply_markup=kb_main())
 
         await state.update_data(reg_otp_key=res_reg.get("otp_key") or res_reg.get("key", ""))
         await sending.edit_text(
-            f"📩 <b>Registratsiya SMS kodi yuborildi!</b>\n\n"
-            f"<code>{data['phone']}</code> raqamiga yuborilgan <b>6 xonali kodni</b> kiriting:",
+            f"📩 <b>SMS kod yuborildi!</b>\n\n"
+            f"<code>{phone}</code> raqamiga yuborilgan <b>6 xonali kodni</b> kiriting:",
             parse_mode="HTML"
         )
         await state.set_state(VoteStates.REG_SMS)
-        await cb.answer()
         return
 
+    # Avtomatik yechilmagan bo'lsa (qo'lda yechish uchun ko'rsatamiz)
     try:
         image_bytes = base64.b64decode(captcha["image"].split(",")[-1])
     except Exception:
         image_bytes = base64.b64decode(captcha["image"])
 
-    photo = BufferedInputFile(image_bytes, filename="reg_captcha.png")
+    photo = BufferedInputFile(image_bytes, filename="captcha_reg.png")
     await loading.delete()
-    await cb.message.answer_photo(
+    await msg.answer_photo(
         photo,
-        caption="6️⃣ <b>Rasmdagi raqamlarni kiriting (Registratsiya):</b>",
+        caption="🧩 <b>Tizimda ro'yxatdan o'tish uchun rasmdagi sonlarni kiriting:</b>",
         reply_markup=kb_cancel(), parse_mode="HTML"
     )
     await state.set_state(VoteStates.REG_CAPTCHA)
-    await cb.answer()
 
 @router.message(VoteStates.REG_CAPTCHA, F.text)
 async def reg_captcha(msg: Message, state: FSMContext):
